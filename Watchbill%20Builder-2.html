@@ -1,0 +1,2711 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Watchbill Builder</title>
+  <meta name="description" content="Editable monthly and daily watchbill generator with qualification-aware scheduling, Inport/Underway transitions, and section-leader assignments." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230f263a'/%3E%3Cpath d='M15 18h34v28H15z' fill='%23fff'/%3E%3Cpath d='M21 13v10M43 13v10M15 27h34M22 34h7M35 34h7M22 40h7M35 40h7' stroke='%23255f8b' stroke-width='4'/%3E%3C/svg%3E" />
+  <style>
+:root {
+  --bg: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #16202a;
+  --muted: #687481;
+  --line: #d8dee5;
+  --line-strong: #9aa5b1;
+  --accent: #183a5a;
+  --accent-2: #255f8b;
+  --good: #1d6b45;
+  --warn: #9a6411;
+  --bad: #9e2f2f;
+  --soft: #edf2f6;
+  --shadow: 0 8px 24px rgba(20, 35, 50, 0.08);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+button, input, select, textarea { font: inherit; }
+button {
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 7px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+button:hover { background: #f6f8fa; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.primary:hover { background: var(--accent-2); }
+button.danger { color: var(--bad); border-color: #d6a7a7; }
+button.small { padding: 4px 8px; font-size: 12px; }
+button.icon { width: 32px; height: 32px; padding: 0; }
+.hidden { display: none !important; }
+.topbar {
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 22px;
+  background: #0f263a;
+  color: #fff;
+  border-bottom: 1px solid #091725;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.brand { font-weight: 800; letter-spacing: 0.08em; font-size: 20px; }
+.subtitle { opacity: 0.75; font-size: 12px; margin-top: 3px; }
+.top-actions { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; justify-content: flex-end; }
+.compact-field { display: grid; gap: 3px; font-size: 11px; color: #d4dde6; }
+.compact-field input { padding: 7px 9px; border-radius: 6px; border: 1px solid #728293; background: #fff; color: #111; }
+.app-shell { display: grid; grid-template-columns: 210px minmax(0,1fr); min-height: calc(100vh - 78px); }
+.sidebar { background: #172c3f; padding: 16px 10px; color: #fff; }
+.nav-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  color: #d7e1ea;
+  background: transparent;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: 7px;
+}
+.nav-btn:hover, .nav-btn.active { color: #fff; background: #25465f; }
+.sidebar-note { font-size: 11px; line-height: 1.45; color: #b9c9d6; padding: 16px 10px; margin-top: 18px; border-top: 1px solid #315068; }
+.main-content { min-width: 0; padding: 20px; }
+.page-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.page-heading h1 { font-size: 24px; margin: 0 0 4px; }
+.page-heading p { margin: 0; color: var(--muted); font-size: 13px; }
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 16px; }
+.panel-header { padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-body { padding: 14px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.form-grid { display: grid; grid-template-columns: repeat(4, minmax(130px,1fr)); gap: 10px; }
+.field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.field input, .field select, .field textarea {
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 7px 8px;
+  background: #fff;
+  color: var(--ink);
+  min-width: 0;
+}
+.field textarea { min-height: 72px; resize: vertical; }
+.inline-field { display: flex; align-items: center; gap: 7px; }
+.inline-field input, .inline-field select { border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; }
+.table-wrap { overflow: auto; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th { text-align: left; color: #42505c; background: #f5f7f9; position: sticky; top: 0; z-index: 1; }
+.data-table th, .data-table td { border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: middle; }
+.data-table tr:hover td { background: #fafbfd; }
+.data-table input, .data-table select { width: 100%; border: 1px solid #c9d0d7; border-radius: 5px; padding: 5px 6px; background:#fff; }
+.data-table input[type="checkbox"] { width: auto; }
+.tag-list { display: flex; gap: 5px; flex-wrap: wrap; }
+.tag { display: inline-flex; align-items: center; padding: 2px 6px; border: 1px solid #b8c5d0; border-radius: 999px; background: #eef4f8; font-size: 11px; white-space: nowrap; }
+.tag.muted { background:#f2f2f2; color:#67727c; border-color:#d5d5d5; }
+.notice { border: 1px solid #d6dee6; border-left-width: 4px; border-radius: 7px; padding: 10px 12px; font-size: 12px; margin-bottom: 10px; background: #fff; }
+.notice.good { border-left-color: var(--good); }
+.notice.warn { border-left-color: var(--warn); background:#fffaf1; }
+.notice.bad { border-left-color: var(--bad); background:#fff7f7; }
+.kpis { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.kpi { background:#fff; border:1px solid var(--line); border-radius:8px; padding:8px 11px; min-width:125px; }
+.kpi .label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.kpi .value { font-size:19px; font-weight:750; margin-top:1px; }
+.split-layout { display:grid; grid-template-columns: 260px minmax(0,1fr); gap:14px; }
+.list-card { background:#fff; border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+.list-card button { display:block; width:100%; border:0; border-radius:0; border-bottom:1px solid var(--line); text-align:left; padding:10px 12px; }
+.list-card button.active { background:#e9f0f6; color:#113852; font-weight:700; }
+.list-card button:last-child { border-bottom:0; }
+.req-section { border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
+.req-section h3 { margin:0; padding:9px 11px; font-size:13px; background:#f5f7f9; border-bottom:1px solid var(--line); }
+.req-section .inside { padding:10px; }
+.check-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px; }
+.check-pill { display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:6px; padding:5px 7px; background:#fafbfc; font-size:11px; }
+.color-chip { width:13px; height:13px; border-radius:3px; display:inline-block; border:1px solid rgba(0,0,0,.15); vertical-align:-2px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.small-note { font-size:11px; color:var(--muted); line-height:1.45; }
+
+/* workbook-style watchbill */
+.watchbill-shell { overflow:auto; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; }
+.watchbill-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+  color:#000;
+  font-family: "Aptos Narrow", "Arial Narrow", Arial, sans-serif;
+  width: max-content;
+  min-width: 100%;
+}
+.watchbill-table .title-cell { font-size: 24px; height:55px; text-align:left; vertical-align:middle; font-weight:400; border:0; padding-left:6px; }
+.watchbill-table th, .watchbill-table td { border:1px solid #8c8c8c; padding:1px 2px; height:19px; font-size:10px; }
+.watchbill-table .name-col { width: 270px; min-width:270px; max-width:270px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.watchbill-table .day-col { width:30px; min-width:30px; max-width:30px; text-align:center; }
+.watchbill-table .schedule-label { text-align:right; padding-right:6px; font-weight:400; }
+.watchbill-table .schedule-segment { text-align:center; white-space:nowrap; overflow:hidden; font-size:9px; }
+.watchbill-table .date-header { text-align:center; font-weight:400; }
+.watchbill-table .division-row td { font-weight:700; background:#f4f4f4; border-top:1.5px solid #333; border-bottom:1.5px solid #333; }
+.watchbill-table .division-row td:not(:first-child) { color:transparent; }
+.watchbill-table .duty-cell { text-align:center; cursor:pointer; user-select:none; }
+.watchbill-table .duty-cell.assigned { font-weight:800; background:#e9eef2; }
+.watchbill-table .billet-mark { display:block; font-size:8px; line-height:0.92; white-space:nowrap; overflow:hidden; text-overflow:clip; letter-spacing:-0.15px; }
+.watchbill-table .billet-mark.multi { font-size:7px; line-height:0.88; }
+.watchbill-table .billet-mark.duty-only { font-size:6.5px; letter-spacing:-0.35px; }
+.watchbill-table .duty-cell.forced-on { outline:2px solid #1f6a45; outline-offset:-2px; background:#e8f4ed; }
+.watchbill-table .duty-cell.forced-off { color:#9a2f2f; background:#fff3f3; }
+.watchbill-table .duty-cell.absent { font-weight:700; }
+.watchbill-table .weekend { background:#fafafa; }
+.watchbill-table .holiday { box-shadow: inset 0 3px 0 #b17a1c; }
+.warning-list { margin:0; padding-left:18px; font-size:12px; }
+.calendar-day-warning { color:var(--bad); font-weight:700; }
+.transition-panel { border-left: 4px solid #255f8b; }
+.transition-badge { display:inline-block; margin-top:4px; padding:2px 6px; border-radius:999px; background:#dbeafe; color:#17476b; font-size:10px; font-weight:700; white-space:nowrap; }
+.selected-daily-row td { background:#edf5fb !important; }
+.daily-layout { grid-template-columns:minmax(420px, .9fr) minmax(560px, 1.1fr); align-items:start; }
+.daily-month-list { max-height:650px; }
+.daily-watchbill-sheet {
+  background:#fff;
+  color:#101820;
+  border:1px solid #9aa5b1;
+  border-radius:8px;
+  padding:24px;
+  max-width:1000px;
+  margin:0 auto 24px;
+  box-shadow:var(--shadow);
+  font-family:"Aptos", Arial, sans-serif;
+}
+.daily-sheet-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; border-bottom:3px solid #183a5a; padding-bottom:12px; margin-bottom:14px; }
+.daily-sheet-kicker { font-size:12px; font-weight:800; letter-spacing:.12em; color:#526473; }
+.daily-sheet-heading h1 { margin:4px 0 0; font-size:26px; }
+.daily-sheet-status { background:#183a5a; color:#fff; font-weight:800; padding:9px 14px; border-radius:5px; }
+.daily-meta-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+.daily-meta-grid > div { border:1px solid #b8c3cc; padding:8px 10px; min-height:52px; }
+.daily-meta-grid span { display:block; text-transform:uppercase; letter-spacing:.07em; color:#60717e; font-size:9px; margin-bottom:3px; }
+.daily-meta-grid strong { font-size:12px; }
+.daily-transition { background:#eaf3fa; border:1px solid #8cb4d2; border-left:5px solid #255f8b; padding:9px 12px; margin:10px 0; font-size:12px; }
+.daily-transition span { color:#526473; }
+.daily-roster-table { width:100%; border-collapse:collapse; margin-top:10px; font-size:11px; }
+.daily-roster-table th { background:#183a5a; color:#fff; text-align:left; }
+.daily-roster-table th, .daily-roster-table td { border:1px solid #7d8a95; padding:6px 7px; }
+.daily-roster-table th:first-child, .daily-roster-table td:first-child { width:32px; text-align:center; }
+.daily-notes { border:1px solid #7d8a95; margin-top:12px; min-height:70px; padding:8px 10px; font-size:11px; }
+.daily-notes strong { display:block; text-transform:uppercase; font-size:9px; letter-spacing:.08em; margin-bottom:5px; }
+.daily-warning { border:1px solid #c88888; background:#fff5f5; padding:7px 9px; margin-top:10px; font-size:10px; }
+.daily-signatures { display:grid; grid-template-columns:1fr 1fr; gap:50px; margin-top:38px; }
+.daily-signatures div { border-top:1px solid #222; text-align:center; padding-top:4px; font-size:9px; color:#4f5d68; }
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns:1fr; }
+  .sidebar { display:flex; gap:5px; overflow:auto; padding:8px; position:sticky; top:78px; z-index:15; }
+  .nav-btn { width:auto; white-space:nowrap; margin:0; }
+  .sidebar-note { display:none; }
+  .grid-2, .grid-3, .form-grid, .split-layout { grid-template-columns:1fr; }
+  .daily-meta-grid { grid-template-columns:1fr 1fr; }
+  .main-content { padding:12px; }
+}
+
+@media print {
+  @page { size: Letter landscape; margin: 0.12in; }
+  html, body { width:100%; height:auto; background:#fff; margin:0; padding:0; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .screen-only { display:none !important; }
+  .app-shell { display:block; min-height:0; }
+  .main-content { padding:0; margin:0; }
+  .watchbill-shell {
+    border:0; padding:0; margin:0; overflow:visible;
+    width:100%;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-only-hide { display:none !important; }
+  .watchbill-table { width:100%; table-layout:fixed; border-collapse:collapse; }
+  .watchbill-table .title-cell { font-size:17pt; height:0.34in; padding-left:0.04in; line-height:1; }
+  .watchbill-table th, .watchbill-table td {
+    border:0.45pt solid #000;
+    height:0.135in;
+    min-height:0;
+    font-size:5.8pt;
+    line-height:1;
+    padding:0 0.5pt;
+  }
+  .watchbill-table .name-col { width:1.90in; min-width:1.90in; max-width:1.90in; }
+  .watchbill-table .day-col { width:auto; min-width:0; max-width:none; }
+  .watchbill-table .schedule-segment { font-size:5.3pt; }
+  .watchbill-table .schedule-label { padding-right:2px; }
+  .watchbill-table .duty-cell { cursor:default; }
+  .watchbill-table .billet-mark { font-size:4.7pt; line-height:0.88; letter-spacing:-0.18pt; }
+  .watchbill-table .billet-mark.multi { font-size:4.1pt; line-height:0.82; }
+  .watchbill-table .billet-mark.duty-only { font-size:3.8pt; letter-spacing:-0.25pt; }
+  .watchbill-table .duty-cell.forced-off { color:#000; background:#fff; }
+  .watchbill-table .duty-cell.forced-off .screen-mark { display:none; }
+  .watchbill-table .holiday { box-shadow:none; }
+}
+
+@page daily { size: Letter portrait; margin: 0.35in; }
+
+@media print {
+  body.print-daily .daily-watchbill-sheet {
+    page: daily;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+    padding:0;
+    margin:0;
+    max-width:none;
+    width:100%;
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  body.print-daily .daily-sheet-heading { margin-bottom:0.12in; padding-bottom:0.08in; }
+  body.print-daily .daily-sheet-heading h1 { font-size:18pt; }
+  body.print-daily .daily-sheet-kicker { font-size:8pt; }
+  body.print-daily .daily-sheet-status { font-size:9pt; padding:0.07in 0.12in; }
+  body.print-daily .daily-meta-grid { gap:0.05in; margin-bottom:0.08in; }
+  body.print-daily .daily-meta-grid > div { min-height:0.38in; padding:0.05in 0.07in; }
+  body.print-daily .daily-meta-grid span { font-size:6.5pt; }
+  body.print-daily .daily-meta-grid strong { font-size:8.5pt; }
+  body.print-daily .daily-transition { font-size:8pt; padding:0.06in 0.08in; margin:0.07in 0; }
+  body.print-daily .daily-roster-table { font-size:8pt; margin-top:0.06in; }
+  body.print-daily .daily-roster-table th, body.print-daily .daily-roster-table td { padding:0.035in 0.045in; }
+  body.print-daily .daily-notes { min-height:0.55in; margin-top:0.08in; padding:0.06in; font-size:8pt; }
+  body.print-daily .daily-warning { font-size:7pt; margin-top:0.06in; }
+  body.print-daily .daily-signatures { margin-top:0.35in; gap:0.6in; }
+}
+
+
+/* approvals + editable formatting */
+.approval-print {
+  margin-top: 10px;
+  border: 1px solid #666;
+  padding: 8px 10px 10px;
+  break-inside: avoid;
+}
+.approval-title {
+  text-align: center;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+}
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.approval-slot {
+  display: grid;
+  grid-template-columns: 1fr 60px;
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: end;
+}
+.approval-role { grid-column: 1 / -1; text-align:center; font-size:10px; font-weight:800; }
+.approval-name { grid-column: 1 / -1; text-align:center; min-height:16px; font-size:10px; }
+.signature-line, .date-line { border-top: 1px solid #333; padding-top: 2px; color:#555; font-size:8px; text-align:center; }
+
+@media print {
+  .approval-print { margin-top: 0.035in; padding: 0.025in 0.05in 0.035in; border: 0.45pt solid #000; break-inside:avoid; page-break-inside:avoid; }
+  .approval-title { font-size: 5.8pt; margin-bottom: 0.018in; line-height:1; }
+  .approval-grid { gap: 0.045in; }
+  .approval-slot { grid-template-columns:1fr 0.42in; column-gap:0.04in; row-gap:0; }
+  .approval-role, .approval-name { font-size: 5.2pt; min-height:0.09in; line-height:1; }
+  .signature-line, .date-line { font-size: 4.6pt; padding-top:1px; line-height:1; }
+}
+
+</style>
+</head>
+<body>
+  <header class="topbar screen-only">
+    <div>
+      <div class="brand">WATCHBILL BUILDER</div>
+      <div class="subtitle">Monthly and daily watchbills • editable transitions • qualification-aware scheduling</div>
+    </div>
+    <div class="top-actions">
+      <label class="compact-field">Month <input id="monthPicker" type="month" /></label>
+      <button id="generateBtn" class="primary">Generate Watchbill</button>
+      <button id="printBtn" title="Print the finished watchbill or choose Save as PDF">Print / Save PDF</button>
+      <button id="saveBtn">Save</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="sidebar screen-only" aria-label="Sections">
+      <button class="nav-btn active" data-view="watchbill">Watchbill</button>
+      <button class="nav-btn" data-view="calendar">Calendar</button>
+      <button class="nav-btn" data-view="daily">Daily Watchbills</button>
+      <button class="nav-btn" data-view="people">Personnel</button>
+      <button class="nav-btn" data-view="requirements">Requirement Sets</button>
+      <button class="nav-btn" data-view="absences">Leave / School / Other</button>
+      <button class="nav-btn" data-view="specialdays">Weekends & Holidays</button>
+      <button class="nav-btn" data-view="approvals">Approvals & Formatting</button>
+      <button class="nav-btn" data-view="settings">Settings & Data</button>
+      <div class="sidebar-note">
+        <strong>Editable assignments</strong><br>
+        Click an assigned cell to force that person off, or a blank cell to force them on. The generator rebalances the rest around your locked edits.
+      </div>
+    </nav>
+
+    <main id="mainContent" class="main-content"></main>
+  </div>
+
+  <input id="importInput" class="hidden" type="file" accept="application/json,.json" />
+  <!-- Source files are loaded in dependency order. See js/README.md for the map. -->
+  <script>
+/**
+ * 01-workbook-seed.js
+ * Workbook-derived starter roster and schedule.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+"use strict";
+
+const WORKBOOK_SEED = {
+  "people": [
+    {
+      "id": "p1",
+      "name": "Bouchard",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "ETN1(SS) Bouchard (SRO/SRW)(RO)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RO",
+        "RT",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "Palmer",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "ETN1(SS) Palmer (SRO/SRW)(RO)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RO",
+        "RT",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Perimon",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "ETN1(SS) Perimon (SRO)(RO)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RO",
+        "RT",
+        "SRO",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p4",
+      "name": "Wingate",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "ETN1(SS) Wingate (SRO/SRW)(RO)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RO",
+        "RT",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p5",
+      "name": "Rickert",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "ETN2(SS) Rickert (SRO/SRW)(RO/ERF)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RO",
+        "RT",
+        "ERF",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p6",
+      "name": "Hill",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "ETN2(SU) Hill (Extra)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": []
+    },
+    {
+      "id": "p7",
+      "name": "Lewis",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "ETN2(SU) Lewis (SEO)(RT)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RT",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p8",
+      "name": "Tokash",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "ETN2(SU) Tokash (Extra)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": []
+    },
+    {
+      "id": "p9",
+      "name": "Hurtado",
+      "division": "RC DIV",
+      "rate": "ETN",
+      "rank": "E4",
+      "fish": false,
+      "printLabel": "ETN3(SU) Hurtado (SEO)(RT)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "RT",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p10",
+      "name": "Ballard-Seay",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "EMN1(SS) Ballard-Seay (SRO/SRW)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p11",
+      "name": "Fossan",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "EMN1(SS) Fossan (SRO/SRW)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p12",
+      "name": "Pacheco",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "EMN1(SS) Pacheco (SRO/SRW)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p13",
+      "name": "Zick",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "EMN1(SS) Zick (SRO)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SRO",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p14",
+      "name": "Bernal",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "EMN2(SS) Bernal (SEO)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p15",
+      "name": "Cates",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "EMN2(SS) Cates (SRO/SRW)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p16",
+      "name": "Halye",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "EMN2(SS) Halye (SRO/SRW)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p17",
+      "name": "Woodward",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "EMN2(SS) Woodward (SEO)(EO/TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "EO",
+        "TH",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p18",
+      "name": "Pirtle",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "EMN2(SU) Pirtle (SEO)(TH)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "TH",
+        "SEO"
+      ]
+    },
+    {
+      "id": "p19",
+      "name": "Harris",
+      "division": "E DIV",
+      "rate": "EMN",
+      "rank": "E3",
+      "fish": false,
+      "printLabel": "EMNFN(SU) Harris (SEO)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "SEO"
+      ]
+    },
+    {
+      "id": "p20",
+      "name": "Hickox",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "MMN1(SS) Hickox (SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p21",
+      "name": "Korade",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "MMN1(SS) Korade (SEO/SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p22",
+      "name": "Lemoine",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "MMN1(SS) Lemoine (SEO/SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p23",
+      "name": "Underwood",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "MMN1(SS) Underwood (SRO/SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p24",
+      "name": "Baldwin",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "MMN2(SS) Baldwin (SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p25",
+      "name": "Burchfield",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "MMN2(SS) Burchfield (SEO/SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p26",
+      "name": "Laughrey",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "MMN2(SS) Laughrey (SRO/SRW)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p27",
+      "name": "Powell",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "MMN2(SU) Powell (SRW)(ERLL/ERF)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERLL",
+        "ERF",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p28",
+      "name": "Raishe",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "MMN2(SU) Raishe (SRW)(ERUL)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p29",
+      "name": "Wieland",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "MMN2(SU) Wieland (Extra)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": []
+    },
+    {
+      "id": "p30",
+      "name": "Christie",
+      "division": "M DIV",
+      "rate": "MMN",
+      "rank": "E4",
+      "fish": false,
+      "printLabel": "MMN3(SU) Christie (Extra)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": []
+    },
+    {
+      "id": "p31",
+      "name": "Jones",
+      "division": "RL DIV",
+      "rate": "MMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "MMN1(SS) Jones (SRW)(ELT)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ELT",
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p32",
+      "name": "Rollins",
+      "division": "RL DIV",
+      "rate": "MMN",
+      "rank": "E6",
+      "fish": true,
+      "printLabel": "MMN1(SS) Rollins (SRO/SRW)(ELT)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ELT",
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRO",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p33",
+      "name": "Nordberg",
+      "division": "RL DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "MMN2(SS) Nordberg (SRW)(ELT)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ELT",
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p34",
+      "name": "Smith",
+      "division": "RL DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": true,
+      "printLabel": "MMN2(SS) Smith (SEO/SRW)(ELT)(ERS)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": [
+        "ELT",
+        "ERS",
+        "ERUL",
+        "ERLL",
+        "ERF",
+        "SEO",
+        "SRW"
+      ]
+    },
+    {
+      "id": "p35",
+      "name": "Conners",
+      "division": "RL DIV",
+      "rate": "MMN",
+      "rank": "E5",
+      "fish": false,
+      "printLabel": "MMN2(SU) Conners (Extra)",
+      "dutySection": "",
+      "active": true,
+      "qualifications": []
+    }
+  ],
+  "schedule": [
+    "Norfolk",
+    "PCAN",
+    "Norfolk",
+    "PCAN",
+    "Norfolk",
+    "PCAN",
+    "Norfolk",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "Norfolk",
+    "Inport",
+    "PCAN",
+    "Norfolk",
+    "Yorktown",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Inport",
+    "PCAN",
+    "Yorktown"
+  ]
+};
+
+
+/**
+ * 02-state-and-utilities.js
+ * Application state, persistence, shared utilities, and page routing.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+const STORAGE_KEY = "watchbillBuilder.v1";
+const VERSION = 3;
+
+const ui = {
+  view: "watchbill",
+  editPersonId: null,
+  selectedRequirementId: null,
+  dailyDateKey: null,
+};
+
+function uid(prefix = "id") {
+  if (globalThis.crypto?.randomUUID) return `${prefix}_${crypto.randomUUID()}`;
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function esc(v) {
+  return String(v ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function clone(v) { return JSON.parse(JSON.stringify(v)); }
+function pad2(n) { return String(n).padStart(2, "0"); }
+function dateKey(year, month, day) { return `${year}-${pad2(month)}-${pad2(day)}`; }
+function monthKey(year, month) { return `${year}-${pad2(month)}`; }
+function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+function monthLabel(year, month) { return new Date(year, month - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" }); }
+function isWeekend(year, month, day) { const d = new Date(year, month - 1, day).getDay(); return d === 0 || d === 6; }
+function normalizeQual(v) { return String(v ?? "").trim().toUpperCase(); }
+function unique(arr) { return [...new Set(arr)]; }
+
+function buildDefaultRequirements() {
+  const commonMin = { SRO: 2, SEO: 1, SRW: 3 };
+  const operational = { SRO: 2, SEO: 2, SRW: 2 };
+  const make = (id, name, billets, preferredPersonnel = 0) => ({
+    id, name, billets,
+    qualificationMinimums: clone(commonMin),
+    operationalMinimums: clone(operational),
+    doubleFillRules: [{ id: uid("df"), anchorQualification: "ELT", maxAdditionalBillets: 1 }],
+    minPersonnel: 0,
+    preferredPersonnel,
+  });
+  return [
+    make("req_lt24", "<24 Hr", [
+      ["RO", ["RO"]], ["EO", ["EO"]], ["RT", ["RT"]], ["TH", ["TH"]],
+      ["ERUL", ["ERUL"]], ["ERLL", ["ERLL"]], ["ERF", ["ERF"]], ["ELT", ["ELT"]],
+    ].map(([name, eligibleQuals]) => ({ id: uid("billet"), name, count: 1, eligibleQuals })), 7),
+    make("req_gt24", ">24 Hr", [
+      ["RO", ["RO"]], ["EO", ["EO"]], ["ERUL", ["ERUL"]], ["ERLL", ["ERLL"]],
+      ["ERF", ["ERF"]], ["ELT", ["ELT"]], ["SEO or RT", ["SEO", "RT"]],
+    ].map(([name, eligibleQuals]) => ({ id: uid("billet"), name, count: 1, eligibleQuals })), 6),
+    make("req_eval", "Eval", [
+      ["RO", ["RO"]], ["EO", ["EO"]], ["ERUL", ["ERUL"]], ["ERLL", ["ERLL"]],
+      ["ERF", ["ERF"]], ["ELT", ["ELT"]], ["SEO or RT", ["SEO", "RT"]],
+    ].map(([name, eligibleQuals]) => ({ id: uid("billet"), name, count: 1, eligibleQuals })), 6),
+  ];
+}
+
+function makeDefaultState() {
+  const state = {
+    version: VERSION,
+    viewYear: 2026,
+    viewMonth: 10,
+    qualifications: ["RO", "RT", "EO", "TH", "ELT", "ERS", "ERUL", "ERLL", "ERF", "SRO", "SEO", "SRW"],
+    scheduleLabels: ["Underway", "Norfolk", "Shiftwork", "Yorktown", "PCAN", "Inport"],
+    dutySections: ["1", "2", "3", "4"],
+    absenceTypes: [
+      { id: "abs_leave", name: "Leave", code: "L", color: "#dbeafe", blocksDuty: true },
+      { id: "abs_school", name: "School", code: "SCH", color: "#ede9fe", blocksDuty: true },
+      { id: "abs_tad", name: "TAD", code: "TAD", color: "#fef3c7", blocksDuty: true },
+      { id: "abs_siq", name: "SIQ", code: "SIQ", color: "#fee2e2", blocksDuty: true },
+      { id: "abs_appt", name: "Appointment", code: "APT", color: "#e0f2fe", blocksDuty: true },
+      { id: "abs_other", name: "Other", code: "O", color: "#e5e7eb", blocksDuty: true },
+    ],
+    requirements: buildDefaultRequirements(),
+    people: clone(WORKBOOK_SEED.people),
+    absences: [],
+    dayConfigs: {},
+    manualOverrides: {},
+    generated: {},
+    dailyWatchbills: {},
+    dailyWatchbillSettings: {
+      leaderQualification: "SRO",
+      defaultMusterTime: "07:30",
+      defaultMusterLocation: "Duty Office",
+      title: "DAILY DUTY SECTION WATCHBILL",
+    },
+    schedulerSettings: {
+      minRestDays: 1,
+      enforceDutySections: false,
+      preferEvenDistribution: true,
+      weekendWeight: 18,
+      holidayWeight: 32,
+      spreadDivisions: true,
+      divisionSpreadWeight: 650,
+      carryFairness: true,
+      historyMonths: 12,
+    },
+    specialDaySettings: {
+      weekendRequirementSetId: "req_gt24",
+      holidayRequirementSetId: "req_gt24",
+      weekendScheduleLabel: "Inport",
+      holidayScheduleLabel: "Inport",
+    },
+    approvers: [
+      { id: uid("appr"), role: "RCLCPO", name: "", enabled: true },
+      { id: uid("appr"), role: "MLCPO", name: "", enabled: true },
+      { id: uid("appr"), role: "ENG", name: "", enabled: true },
+    ],
+    approvalSettings: { title: "WATCHBILL APPROVAL", showSignatureLines: true },
+    formatting: {
+      weekendColor: "#f2f2f2",
+      holidayColor: "#fff2cc",
+      assignedColor: "#e9eef2",
+      divisionColor: "#f4f4f4",
+      approvalColor: "#ffffff",
+      colorDutyByQualification: true,
+      qualificationColors: {
+        RO: "#dbeafe", RT: "#cffafe", EO: "#dcfce7", TH: "#fef3c7", ELT: "#fce7f3",
+        ERS: "#ede9fe", ERUL: "#e0f2fe", ERLL: "#ccfbf1", ERF: "#fef9c3", SRO: "#fee2e2", SEO: "#ffedd5", SRW: "#e5e7eb"
+      },
+      scheduleColors: { Underway: "#dbeafe", Norfolk: "#ffffff", Shiftwork: "#ede9fe", Yorktown: "#dcfce7", PCAN: "#fef3c7", Inport: "#ffffff" },
+    },
+  };
+  const reqId = "req_gt24";
+  WORKBOOK_SEED.schedule.forEach((label, i) => {
+    state.dayConfigs[dateKey(2026, 10, i + 1)] = { requirementSetId: reqId, scheduleLabel: label, dutySection: "", holiday: false, holidayName: "" };
+  });
+  return state;
+}
+
+function migrateState(raw) {
+  const base = makeDefaultState();
+  if (!raw || typeof raw !== "object") return base;
+  return {
+    ...base,
+    ...raw,
+    version: VERSION,
+    schedulerSettings: { ...base.schedulerSettings, ...(raw.schedulerSettings || {}) },
+    specialDaySettings: { ...base.specialDaySettings, ...(raw.specialDaySettings || {}) },
+    approvalSettings: { ...base.approvalSettings, ...(raw.approvalSettings || {}) },
+    formatting: {
+      ...base.formatting, ...(raw.formatting || {}),
+      qualificationColors: { ...base.formatting.qualificationColors, ...((raw.formatting || {}).qualificationColors || {}) },
+      scheduleColors: { ...base.formatting.scheduleColors, ...((raw.formatting || {}).scheduleColors || {}) },
+    },
+    approvers: Array.isArray(raw.approvers) ? raw.approvers : base.approvers,
+    qualifications: Array.isArray(raw.qualifications) ? raw.qualifications : base.qualifications,
+    scheduleLabels: Array.isArray(raw.scheduleLabels) ? raw.scheduleLabels : base.scheduleLabels,
+    dutySections: Array.isArray(raw.dutySections) ? raw.dutySections : base.dutySections,
+    absenceTypes: Array.isArray(raw.absenceTypes) ? raw.absenceTypes : base.absenceTypes,
+    requirements: (Array.isArray(raw.requirements) ? raw.requirements : base.requirements).map(r => ({
+      ...r,
+      preferredPersonnel: r.preferredPersonnel != null ? Number(r.preferredPersonnel) || 0 : (r.name === ">24 Hr" || r.name === "Eval" ? 6 : (r.name === "<24 Hr" ? 7 : 0)),
+    })),
+    people: Array.isArray(raw.people) ? raw.people : base.people,
+    absences: Array.isArray(raw.absences) ? raw.absences : [],
+    dayConfigs: raw.dayConfigs || {},
+    manualOverrides: raw.manualOverrides || {},
+    generated: raw.generated || {},
+    dailyWatchbills: raw.dailyWatchbills || {},
+    dailyWatchbillSettings: { ...base.dailyWatchbillSettings, ...(raw.dailyWatchbillSettings || {}) },
+  };
+}
+
+function loadState() {
+  if (typeof localStorage === "undefined") return makeDefaultState();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? migrateState(JSON.parse(raw)) : makeDefaultState();
+  } catch (e) {
+    console.warn("Could not load saved data", e);
+    return makeDefaultState();
+  }
+}
+
+let state = loadState();
+ui.selectedRequirementId = state.requirements[0]?.id || null;
+ui.editPersonId = state.people[0]?.id || null;
+
+function saveState(showMessage = false) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (showMessage) flashSave();
+  } catch (e) {
+    alert("Could not save to browser storage. Export a JSON backup from Settings & Data.");
+  }
+}
+
+function flashSave() {
+  const b = document.getElementById("saveBtn");
+  if (!b) return;
+  const old = b.textContent;
+  b.textContent = "Saved";
+  setTimeout(() => b.textContent = old, 900);
+}
+
+function ensureMonthConfigs() {
+  const { viewYear: y, viewMonth: m } = state;
+  const n = daysInMonth(y, m);
+  for (let d = 1; d <= n; d++) {
+    const k = dateKey(y, m, d);
+    if (!state.dayConfigs[k]) {
+      state.dayConfigs[k] = {
+        requirementSetId: state.requirements.find(r => r.name === ">24 Hr")?.id || state.requirements[0]?.id || "",
+        scheduleLabel: state.scheduleLabels.includes("Inport") ? "Inport" : (state.scheduleLabels[0] || ""),
+        dutySection: "",
+        holiday: false,
+        holidayName: "",
+      };
+    }
+  }
+}
+ensureMonthConfigs();
+
+function getRequirement(id) { return state.requirements.find(r => r.id === id); }
+function getPerson(id) { return state.people.find(p => p.id === id); }
+function getAbsenceType(id) { return state.absenceTypes.find(a => a.id === id); }
+function currentMonthKeys() {
+  const a = [];
+  for (let d = 1; d <= daysInMonth(state.viewYear, state.viewMonth); d++) a.push(dateKey(state.viewYear, state.viewMonth, d));
+  return a;
+}
+function dateWithin(key, start, end) { return key >= start && key <= end; }
+function absenceFor(personId, key) {
+  return state.absences.find(a => a.personId === personId && dateWithin(key, a.start, a.end));
+}
+function blocksDuty(personId, key) {
+  const a = absenceFor(personId, key);
+  return !!(a && getAbsenceType(a.typeId)?.blocksDuty);
+}
+
+function setView(view) {
+  ui.view = view;
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+  render();
+}
+
+function render() {
+  ensureMonthConfigs();
+  document.getElementById("monthPicker").value = monthKey(state.viewYear, state.viewMonth);
+  const main = document.getElementById("mainContent");
+  if (ui.view === "calendar") renderCalendar(main);
+  else if (ui.view === "daily") renderDailyWatchbills(main);
+  else if (ui.view === "people") renderPeople(main);
+  else if (ui.view === "requirements") renderRequirements(main);
+  else if (ui.view === "absences") renderAbsences(main);
+  else if (ui.view === "specialdays") renderSpecialDays(main);
+  else if (ui.view === "approvals") renderApprovals(main);
+  else if (ui.view === "settings") renderSettings(main);
+  else renderWatchbill(main);
+}
+
+function pageHeading(title, description, actions = "") {
+  return `<div class="page-heading screen-only"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div><div class="toolbar">${actions}</div></div>`;
+}
+
+function option(value, label, selected) {
+  return `<option value="${esc(value)}" ${selected ? "selected" : ""}>${esc(label)}</option>`;
+}
+
+function groupPeopleByDivision() {
+  const groups = [];
+  const map = new Map();
+  state.people.filter(p => p.active !== false).forEach(p => {
+    const div = p.division || "UNASSIGNED";
+    if (!map.has(div)) { const g = { division: div, people: [] }; map.set(div, g); groups.push(g); }
+    map.get(div).people.push(p);
+  });
+  return groups;
+}
+
+function coverageCount(selectedIds, qual) {
+  return selectedIds.reduce((n, id) => n + (getPerson(id)?.qualifications?.includes(qual) ? 1 : 0), 0);
+}
+
+function mergeRequirementSets(firstId, secondId) {
+  const first = getRequirement(firstId), second = getRequirement(secondId);
+  if (!first) return second;
+  if (!second) return first;
+  const billetMap = new Map();
+  for (const billet of [...(first.billets || []), ...(second.billets || [])]) {
+    const key = String(billet.name || "Billet").trim().toUpperCase();
+    const existing = billetMap.get(key);
+    if (!existing) billetMap.set(key, { ...clone(billet), id: `transition_${key.replace(/[^A-Z0-9]+/g, "_")}` });
+    else {
+      existing.count = Math.max(Number(existing.count) || 0, Number(billet.count) || 0);
+      existing.eligibleQuals = unique([...(existing.eligibleQuals || []), ...(billet.eligibleQuals || [])]);
+    }
+  }
+  const mergeMinimums = (a = {}, b = {}) => {
+    const out = {};
+    for (const q of unique([...Object.keys(a), ...Object.keys(b)])) out[q] = Math.max(Number(a[q]) || 0, Number(b[q]) || 0);
+    return out;
+  };
+  const doubleFill = new Map();
+  for (const rule of [...(first.doubleFillRules || []), ...(second.doubleFillRules || [])]) {
+    const key = normalizeQual(rule.anchorQualification);
+    const existing = doubleFill.get(key);
+    if (!existing || Number(rule.maxAdditionalBillets) > Number(existing.maxAdditionalBillets)) {
+      doubleFill.set(key, { ...clone(rule), id: `transition_df_${key}` });
+    }
+  }
+  return {
+    id: `transition:${first.id}:${second.id}`,
+    name: `${first.name} → ${second.name}`,
+    billets: [...billetMap.values()],
+    qualificationMinimums: mergeMinimums(first.qualificationMinimums, second.qualificationMinimums),
+    operationalMinimums: mergeMinimums(first.operationalMinimums, second.operationalMinimums),
+    doubleFillRules: [...doubleFill.values()],
+    minPersonnel: Math.max(Number(first.minPersonnel) || 0, Number(second.minPersonnel) || 0),
+    // A transition combines two staffing profiles, so a single profile's preferred headcount is not a valid target.
+    preferredPersonnel: 0,
+  };
+}
+
+function effectiveRequirementForConfig(cfg) {
+  if (cfg?.transition?.enabled) {
+    return mergeRequirementSets(
+      cfg.transition.beforeRequirementSetId || cfg.requirementSetId,
+      cfg.transition.afterRequirementSetId || cfg.requirementSetId
+    );
+  }
+  return getRequirement(cfg?.requirementSetId);
+}
+
+function requirementLabelForConfig(cfg) {
+  return effectiveRequirementForConfig(cfg)?.name || "—";
+}
+
+
+/**
+ * 03-monthly-watchbill.js
+ * Monthly watchbill rendering and manual assignment overrides.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function renderWatchbill(main) {
+  const keys = currentMonthKeys();
+  const results = state.generated || {};
+  const warningDays = keys.filter(k => results[k]?.warnings?.length);
+  const generatedDays = keys.filter(k => results[k]).length;
+  const totalAssignments = keys.reduce((n, k) => n + (results[k]?.selected?.length || 0), 0);
+  const manualEditCount = keys.reduce((n,k) => n + Object.keys(state.manualOverrides[k] || {}).length, 0);
+  const fmt = state.formatting || {};
+
+  let notices = "";
+  if (!generatedDays) notices = `<div class="notice warn screen-only">This month has not been generated yet. Click <strong>Generate Watchbill</strong>.</div>`;
+  else if (warningDays.length) notices = `<div class="notice bad screen-only"><strong>${warningDays.length} day(s) have warnings.</strong> The schedule remains visible so you can see shortages or preferred-staffing exceptions.</div>`;
+  else notices = `<div class="notice good screen-only">All generated days currently satisfy the configured billet and qualification minimum checks.</div>`;
+  if (manualEditCount) notices += `<div class="notice good screen-only"><strong>${manualEditCount} manual assignment edit(s) are locked.</strong> Regeneration keeps those edits and rebalances the rest of the month around them.</div>`;
+
+  const scheduleSegments = [];
+  for (let d = 1; d <= keys.length; ) {
+    const k = keys[d - 1];
+    const label = state.dayConfigs[k]?.scheduleLabel || "";
+    let end = d;
+    while (end < keys.length && (state.dayConfigs[keys[end]]?.scheduleLabel || "") === label) end++;
+    scheduleSegments.push({ label, span: end - d + 1 });
+    d = end + 1;
+  }
+
+  let table = `<div class="watchbill-shell"><table class="watchbill-table"><colgroup><col class="name-col">${keys.map(() => '<col class="day-col">').join('')}</colgroup>`;
+  table += `<thead><tr><th></th><th class="title-cell" colspan="${keys.length}">${esc(monthLabel(state.viewYear, state.viewMonth).replace(/\s\d{4}$/, ""))} Watchbill</th></tr>`;
+  table += `<tr><th class="schedule-label">Schedule:</th>${scheduleSegments.map(seg => `<th class="schedule-segment" colspan="${seg.span}" style="background:${esc(fmt.scheduleColors?.[seg.label] || '#ffffff')}">${esc(seg.label)}</th>`).join("")}</tr>`;
+  table += `<tr><th class="date-header">Roster</th>${keys.map((k, i) => {
+    const r = results[k];
+    const cfg = state.dayConfigs[k] || {};
+    const wknd = isWeekend(state.viewYear, state.viewMonth, i + 1);
+    const bg = cfg.holiday ? (fmt.holidayColor || '#fff2cc') : (wknd ? (fmt.weekendColor || '#f2f2f2') : '#ffffff');
+    const cls = ["date-header", wknd ? "weekend" : "", cfg.holiday ? "holiday" : "", r?.warnings?.length ? "calendar-day-warning" : ""].filter(Boolean).join(" ");
+    const holidayTitle = cfg.holiday ? `${cfg.holidayName || 'Holiday'}${r?.warnings?.length ? ' — ' : ''}` : '';
+    const title = holidayTitle + (r?.warnings?.join("\n") || "");
+    return `<th class="${cls}" style="background:${esc(bg)}" title="${esc(title)}">${i + 1}</th>`;
+  }).join("")}</tr></thead><tbody>`;
+
+  for (const group of groupPeopleByDivision()) {
+    table += `<tr class="division-row"><td style="background:${esc(fmt.divisionColor || '#f4f4f4')}">${esc(group.division)}</td>${keys.map(() => `<td style="background:${esc(fmt.divisionColor || '#f4f4f4')}"></td>`).join('')}</tr>`;
+    for (const p of group.people) {
+      table += `<tr><td title="${esc(p.name)}">${esc(p.printLabel || p.name)}</td>`;
+      for (let d = 1; d <= keys.length; d++) {
+        const k = keys[d - 1];
+        const cfg = state.dayConfigs[k] || {};
+        const abs = absenceFor(p.id, k);
+        const absType = abs ? getAbsenceType(abs.typeId) : null;
+        const override = state.manualOverrides[k]?.[p.id] || "";
+        const result = results[k];
+        const selected = !!result?.selected?.includes(p.id);
+        const billets = result?.billets?.[p.id] || [];
+        const billetQuals = result?.billetQualifications?.[p.id] || [];
+        const classes = ["duty-cell"];
+        const wknd = isWeekend(state.viewYear, state.viewMonth, d);
+        if (wknd) classes.push("weekend");
+        if (cfg.holiday) classes.push("holiday");
+        let text = "";
+        let bg = cfg.holiday ? (fmt.holidayColor || '#fff2cc') : (wknd ? (fmt.weekendColor || '#f2f2f2') : '#ffffff');
+        let title = billets.length ? `Billets: ${billets.join(", ")}${billetQuals.filter(Boolean).length ? ` (${billetQuals.filter(Boolean).join(', ')})` : ''}` : "";
+        if (abs) {
+          classes.push("absent");
+          text = absType?.code || "A";
+          bg = absType?.color || "#eee";
+          title = `${absType?.name || "Unavailable"}${abs.note ? ` — ${abs.note}` : ""}`;
+        } else if (selected) {
+          classes.push("assigned");
+          const billetLabels = billets.filter(Boolean);
+          text = billetLabels.length
+            ? `<span class="billet-mark${billetLabels.length > 1 ? ' multi' : ''}">${billetLabels.map(b => esc(b)).join("<br>")}</span>`
+            : `<span class="billet-mark duty-only">DUTY</span>`;
+          if (fmt.colorDutyByQualification !== false && billetQuals.filter(Boolean).length) {
+            bg = fmt.qualificationColors?.[billetQuals.find(Boolean)] || fmt.assignedColor || '#e9eef2';
+          } else bg = fmt.assignedColor || '#e9eef2';
+          if (override === "on") classes.push("forced-on");
+        } else if (override === "off") {
+          classes.push("forced-off");
+          text = `<span class="screen-mark">—</span>`;
+          title = "Manually forced off this duty day";
+        }
+        table += `<td class="${classes.join(" ")}" style="background:${esc(bg)}" data-person="${esc(p.id)}" data-date="${k}" title="${esc(title)}">${text}</td>`;
+      }
+      table += `</tr>`;
+    }
+  }
+  table += `</tbody></table>`;
+
+  const enabledApprovers = (state.approvers || []).filter(a => a.enabled !== false);
+  if (enabledApprovers.length) {
+    table += `<div class="approval-print" style="background:${esc(fmt.approvalColor || '#ffffff')}"><div class="approval-title">${esc(state.approvalSettings?.title || 'WATCHBILL APPROVAL')}</div><div class="approval-grid">${enabledApprovers.map(a => `<div class="approval-slot"><div class="approval-role">${esc(a.role || 'Approver')}</div>${a.name ? `<div class="approval-name">${esc(a.name)}</div>` : '<div class="approval-name">&nbsp;</div>'}<div class="signature-line">Signature</div><div class="date-line">Date</div></div>`).join('')}</div></div>`;
+  }
+  table += `</div>`;
+
+  let audit = `<div class="panel screen-only"><div class="panel-header">Daily coverage audit</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Day</th><th>Requirement</th><th>People</th><th>SRO</th><th>SEO</th><th>SRW</th><th>Status</th></tr></thead><tbody>`;
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i], r = results[k], req = effectiveRequirementForConfig(state.dayConfigs[k]);
+    const ids = r?.selected || [];
+    audit += `<tr><td>${i + 1}</td><td>${esc(req?.name || "—")}</td><td>${ids.length}${req?.preferredPersonnel ? ` / pref ${Number(req.preferredPersonnel)}` : ''}</td><td>${coverageCount(ids, "SRO")}</td><td>${coverageCount(ids, "SEO")}</td><td>${coverageCount(ids, "SRW")}</td><td>${r ? (r.warnings?.length ? `<span class="calendar-day-warning">${esc(r.warnings.join("; "))}</span>` : "OK") : "Not generated"}</td></tr>`;
+  }
+  audit += `</tbody></table></div></div>`;
+
+  const carry = buildCarryStats(keys[0]);
+  const monthCounts = {};
+  state.people.forEach(p => monthCounts[p.id] = { duties:0, weekend:0, holiday:0 });
+  keys.forEach((k,i) => {
+    const cfg = state.dayConfigs[k] || {};
+    (results[k]?.selected || []).forEach(id => {
+      monthCounts[id] ||= {duties:0,weekend:0,holiday:0}; monthCounts[id].duties++;
+      if (isWeekend(state.viewYear,state.viewMonth,i+1)) monthCounts[id].weekend++;
+      if (cfg.holiday) monthCounts[id].holiday++;
+    });
+  });
+  const fairnessRows = state.people.filter(p => p.active !== false).map(p => {
+    const c=carry[p.id]||{duties:0,weekend:0,holiday:0}, m=monthCounts[p.id]||{duties:0,weekend:0,holiday:0};
+    return `<tr><td>${esc(p.name)}</td><td>${c.duties}</td><td>${m.duties}</td><td>${c.duties+m.duties}</td><td>${c.weekend} + ${m.weekend}</td><td>${c.holiday} + ${m.holiday}</td></tr>`;
+  }).join('');
+  const fairness = `<div class="panel screen-only"><div class="panel-header">Fairness carry-over <span class="small-note">Prior ${Math.max(1,Number(state.schedulerSettings.historyMonths)||12)} month(s) + current month</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Person</th><th>Carry-in duties</th><th>This month</th><th>Combined</th><th>Weekend carry + month</th><th>Holiday carry + month</th></tr></thead><tbody>${fairnessRows}</tbody></table></div></div>`;
+
+  main.innerHTML = pageHeading("Watchbill", "Click an assigned cell to remove/lock it off, or click a blank cell to add/lock that person on. The rest of the month automatically rebalances around your edits.", `<button id="regenHere" class="primary">Rebalance / Generate</button><button id="clearEdits">Clear Manual Edits</button><button id="printHere" title="Print the finished watchbill or choose Save as PDF">Print / Save PDF</button>`) +
+    `<div class="kpis screen-only"><div class="kpi"><div class="label">Generated days</div><div class="value">${generatedDays}/${keys.length}</div></div><div class="kpi"><div class="label">Warning days</div><div class="value">${warningDays.length}</div></div><div class="kpi"><div class="label">Assignments</div><div class="value">${totalAssignments}</div></div><div class="kpi"><div class="label">Manual edits</div><div class="value">${manualEditCount}</div></div></div>` + notices + table + audit + fairness;
+
+  document.getElementById("regenHere")?.addEventListener("click", () => { generateMonth(); saveState(); render(); });
+  document.getElementById("clearEdits")?.addEventListener("click", () => {
+    if (!manualEditCount || confirm("Clear all manual assignment edits for this month and rebalance automatically?")) {
+      keys.forEach(k => delete state.manualOverrides[k]); generateMonth(); saveState(); render();
+    }
+  });
+  document.getElementById("printHere")?.addEventListener("click", () => printWatchbillPdf());
+  main.querySelectorAll(".duty-cell[data-person]").forEach(cell => cell.addEventListener("click", () => cycleManualOverride(cell.dataset.date, cell.dataset.person)));
+}
+
+function cycleManualOverride(k, personId) {
+  if (absenceFor(personId, k)) return;
+  state.manualOverrides[k] ||= {};
+  const cur = state.manualOverrides[k][personId] || "";
+  if (cur) delete state.manualOverrides[k][personId];
+  else {
+    const isCurrentlyAssigned = !!state.generated[k]?.selected?.includes(personId);
+    state.manualOverrides[k][personId] = isCurrentlyAssigned ? "off" : "on";
+  }
+  if (!Object.keys(state.manualOverrides[k]).length) delete state.manualOverrides[k];
+  generateMonth();
+  saveState();
+  render();
+}
+
+
+/**
+ * 04-calendar-and-transitions.js
+ * Calendar editing and Inport/Underway transition plans.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function renderCalendar(main) {
+  const keys = currentMonthKeys();
+  const reqOptions = state.requirements.map(r => option(r.id, r.name, false)).join("");
+  const schedOptions = state.scheduleLabels.map(s => option(s, s, false)).join("");
+  const dutyOptions = [`<option value="">Any / not fixed</option>`, ...state.dutySections.map(s => option(s, `Section ${s}`, false))].join("");
+  const inport = state.scheduleLabels.find(s => s.toLowerCase() === "inport") || state.scheduleLabels[0] || "Inport";
+  const underway = state.scheduleLabels.find(s => s.toLowerCase() === "underway") || state.scheduleLabels[1] || "Underway";
+  const defaultReq = state.requirements.find(r => r.name === ">24 Hr")?.id || state.requirements[0]?.id || "";
+
+  let rows = "";
+  keys.forEach((k, i) => {
+    const cfg = state.dayConfigs[k];
+    const dt = new Date(state.viewYear, state.viewMonth - 1, i + 1);
+    const dayName = dt.toLocaleString(undefined, { weekday: "short" });
+    const result = state.generated[k];
+    rows += `<tr>
+      <td>${i + 1} <span class="small-note">${esc(dayName)}</span></td>
+      <td><select data-day="${k}" data-field="requirementSetId">${state.requirements.map(r => option(r.id, r.name, r.id === cfg.requirementSetId)).join("")}</select>${cfg.transition?.enabled ? `<div class="transition-badge">Combined: ${esc(requirementLabelForConfig(cfg))}</div>` : ""}</td>
+      <td><select data-day="${k}" data-field="scheduleLabel">${state.scheduleLabels.map(s => option(s, s, s === cfg.scheduleLabel)).join("")}</select></td>
+      <td><select data-day="${k}" data-field="dutySection"><option value="">Any / not fixed</option>${state.dutySections.map(s => option(s, `Section ${s}`, s === cfg.dutySection)).join("")}</select></td>
+      <td style="text-align:center"><input type="checkbox" data-day="${k}" data-field="holiday" ${cfg.holiday ? "checked" : ""}></td>
+      <td>${cfg.transition?.enabled ? `<span class="transition-badge">${esc(cfg.transition.fromSchedule)} → ${esc(cfg.transition.toSchedule)}${cfg.transition.time ? ` @ ${esc(cfg.transition.time)}` : ""}</span> <button class="small" data-clear-transition="${k}">Clear</button>` : "—"}</td>
+      <td>${result ? (result.warnings?.length ? `<span class="calendar-day-warning">${esc(result.warnings.join("; "))}</span>` : "OK") : "—"}</td>
+    </tr>`;
+  });
+
+  main.innerHTML = pageHeading("Calendar", "Choose daily requirements or apply an Inport/Underway transition. The transition day is staffed against the combined requirements from both sides of the changeover.") + `
+    <div class="panel screen-only transition-panel">
+      <div class="panel-header">Inport / Underway transition</div>
+      <div class="panel-body form-grid">
+        <label class="field">Direction<select id="transitionDirection"><option value="out">Inport → Underway</option><option value="in">Underway → Inport</option></select></label>
+        <label class="field">Transition day<input id="transitionDay" type="number" min="1" max="${keys.length}" value="${Math.min(keys.length, 15)}"></label>
+        <label class="field">Transition time<input id="transitionTime" type="time" value="08:00"></label>
+        <label class="field">Before-transition requirements<select id="transitionBeforeReq">${state.requirements.map(r => option(r.id, r.name, r.id === defaultReq)).join("")}</select></label>
+        <label class="field">After-transition requirements<select id="transitionAfterReq">${state.requirements.map(r => option(r.id, r.name, r.id === defaultReq)).join("")}</select></label>
+        <label class="field">Update days before<select id="transitionUpdateBefore"><option value="1">Yes</option><option value="0">No—transition day only</option></select></label>
+        <label class="field">Update days after<select id="transitionUpdateAfter"><option value="1">Yes</option><option value="0">No—transition day only</option></select></label>
+        <div class="field"><span>&nbsp;</span><button id="applyTransition" class="primary">Apply transition plan</button></div>
+      </div>
+      <div class="panel-body small-note">The transition date keeps both requirement sets. Its generated duty team must satisfy the stronger combined billet and qualification minimums.</div>
+    </div>
+    <div class="panel screen-only">
+      <div class="panel-header">Bulk apply</div>
+      <div class="panel-body form-grid">
+        <label class="field">Start day<input id="bulkStart" type="number" min="1" max="${keys.length}" value="1"></label>
+        <label class="field">End day<input id="bulkEnd" type="number" min="1" max="${keys.length}" value="${keys.length}"></label>
+        <label class="field">Requirement set<select id="bulkReq"><option value="">Leave unchanged</option>${reqOptions}</select></label>
+        <label class="field">Schedule<select id="bulkSchedule"><option value="">Leave unchanged</option>${schedOptions}</select></label>
+        <label class="field">Duty section<select id="bulkSection"><option value="__unchanged__">Leave unchanged</option>${dutyOptions}</select></label>
+        <div class="field"><span>&nbsp;</span><button id="bulkApply" class="primary">Apply to range</button></div>
+        <label class="field">Rotation start section<select id="rotateStart">${state.dutySections.map(s => option(s, `Section ${s}`, false)).join("")}</select></label>
+        <div class="field"><span>&nbsp;</span><button id="rotateSections">Rotate sections by day</button></div>
+      </div>
+    </div>
+    <div class="panel"><div class="panel-header">${esc(monthLabel(state.viewYear, state.viewMonth))}</div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Day</th><th>Duty requirements</th><th>Schedule</th><th>Duty section</th><th>Holiday</th><th>Transition</th><th>Generated status</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+
+  main.querySelectorAll("[data-day][data-field]").forEach(el => el.addEventListener("change", () => {
+    const cfg = state.dayConfigs[el.dataset.day];
+    cfg[el.dataset.field] = el.type === "checkbox" ? el.checked : el.value;
+    clearGeneratedMonth();
+    saveState();
+    render();
+  }));
+  document.getElementById("bulkApply")?.addEventListener("click", () => {
+    const start = Math.max(1, Math.min(keys.length, Number(document.getElementById("bulkStart").value) || 1));
+    const end = Math.max(start, Math.min(keys.length, Number(document.getElementById("bulkEnd").value) || keys.length));
+    const req = document.getElementById("bulkReq").value;
+    const sched = document.getElementById("bulkSchedule").value;
+    const section = document.getElementById("bulkSection").value;
+    for (let d = start; d <= end; d++) {
+      const cfg = state.dayConfigs[keys[d - 1]];
+      if (req) cfg.requirementSetId = req;
+      if (sched) cfg.scheduleLabel = sched;
+      if (section !== "__unchanged__") cfg.dutySection = section;
+    }
+    clearGeneratedMonth(); saveState(); render();
+  });
+  document.getElementById("rotateSections")?.addEventListener("click", () => {
+    if (!state.dutySections.length) return;
+    const startValue = document.getElementById("rotateStart").value;
+    let idx = Math.max(0, state.dutySections.indexOf(startValue));
+    keys.forEach((k, i) => state.dayConfigs[k].dutySection = state.dutySections[(idx + i) % state.dutySections.length]);
+    clearGeneratedMonth(); saveState(); render();
+  });
+  document.getElementById("applyTransition")?.addEventListener("click", () => {
+    const direction = document.getElementById("transitionDirection").value;
+    const fromSchedule = direction === "out" ? inport : underway;
+    const toSchedule = direction === "out" ? underway : inport;
+    applyTransitionPlan({
+      day: Number(document.getElementById("transitionDay").value),
+      time: document.getElementById("transitionTime").value,
+      fromSchedule,
+      toSchedule,
+      beforeRequirementSetId: document.getElementById("transitionBeforeReq").value,
+      afterRequirementSetId: document.getElementById("transitionAfterReq").value,
+      updateBefore: document.getElementById("transitionUpdateBefore").value === "1",
+      updateAfter: document.getElementById("transitionUpdateAfter").value === "1",
+    });
+    saveState(); render();
+  });
+  main.querySelectorAll("[data-clear-transition]").forEach(button => button.addEventListener("click", () => {
+    const k = button.dataset.clearTransition;
+    const cfg = state.dayConfigs[k];
+    if (cfg?.transition) {
+      cfg.scheduleLabel = cfg.transition.toSchedule || cfg.scheduleLabel;
+      cfg.requirementSetId = cfg.transition.afterRequirementSetId || cfg.requirementSetId;
+      delete cfg.transition;
+      clearGeneratedMonth(); saveState(); render();
+    }
+  }));
+}
+
+function applyTransitionPlan(plan) {
+  const keys = currentMonthKeys();
+  const day = Math.max(1, Math.min(keys.length, Number(plan.day) || 1));
+  const label = `${plan.fromSchedule} → ${plan.toSchedule}`;
+  if (!state.scheduleLabels.includes(label)) state.scheduleLabels.push(label);
+  state.formatting ||= {};
+  state.formatting.scheduleColors ||= {};
+  if (!state.formatting.scheduleColors[label]) state.formatting.scheduleColors[label] = "#d9e7f2";
+  keys.forEach((k, index) => {
+    const d = index + 1, cfg = state.dayConfigs[k];
+    if (d < day && plan.updateBefore) {
+      cfg.scheduleLabel = plan.fromSchedule;
+      cfg.requirementSetId = plan.beforeRequirementSetId;
+      delete cfg.transition;
+    } else if (d === day) {
+      cfg.scheduleLabel = label;
+      cfg.requirementSetId = plan.afterRequirementSetId;
+      cfg.transition = {
+        enabled: true,
+        fromSchedule: plan.fromSchedule,
+        toSchedule: plan.toSchedule,
+        time: plan.time || "",
+        beforeRequirementSetId: plan.beforeRequirementSetId,
+        afterRequirementSetId: plan.afterRequirementSetId,
+      };
+    } else if (d > day && plan.updateAfter) {
+      cfg.scheduleLabel = plan.toSchedule;
+      cfg.requirementSetId = plan.afterRequirementSetId;
+      delete cfg.transition;
+    }
+  });
+  clearGeneratedMonth();
+}
+
+
+/**
+ * 05-daily-watchbills.js
+ * Daily watchbill generation, editing, and section-leader rotation.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function dailyDateLabel(k, options = {}) {
+  const [y, m, d] = k.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    weekday: options.short ? "short" : "long",
+    month: options.short ? "short" : "long",
+    day: "numeric",
+    year: options.short ? undefined : "numeric",
+  });
+}
+
+function dailySourceSignature(k) {
+  const result = state.generated[k] || {};
+  return JSON.stringify({ selected: result.selected || [], billets: result.billets || {}, schedule: state.dayConfigs[k]?.scheduleLabel || "" });
+}
+
+function pickDailyLeader(k, counts = {}) {
+  const assigned = state.generated[k]?.selected || [];
+  const qual = normalizeQual(state.dailyWatchbillSettings?.leaderQualification || "");
+  let candidates = assigned.map(getPerson).filter(Boolean).filter(p => !qual || (p.qualifications || []).includes(qual));
+  if (!candidates.length) candidates = assigned.map(getPerson).filter(Boolean);
+  if (!candidates.length) candidates = state.people.filter(p => p.active !== false && (!qual || (p.qualifications || []).includes(qual)));
+  candidates.sort((a, b) => (counts[a.id] || 0) - (counts[b.id] || 0) || String(a.name).localeCompare(String(b.name)));
+  return candidates[0]?.id || "";
+}
+
+function buildDailyWatchbill(k, forceRows = false, leaderCounts = {}) {
+  const existing = state.dailyWatchbills[k] || {};
+  if (existing.edited && !forceRows) return existing;
+  const result = state.generated[k] || { selected: [], billets: {} };
+  const rows = (result.selected || []).map(personId => ({
+    id: uid("dailyrow"),
+    personId,
+    role: (result.billets?.[personId] || []).join(" + ") || "DUTY",
+    watchStart: "",
+    watchEnd: "",
+    notes: "",
+  }));
+  const leaderId = existing.sectionLeaderId || pickDailyLeader(k, leaderCounts);
+  const daily = {
+    title: existing.title || state.dailyWatchbillSettings?.title || "DAILY DUTY SECTION WATCHBILL",
+    sectionLeaderId: leaderId,
+    musterTime: existing.musterTime ?? state.dailyWatchbillSettings?.defaultMusterTime ?? "",
+    musterLocation: existing.musterLocation ?? state.dailyWatchbillSettings?.defaultMusterLocation ?? "",
+    notes: existing.notes || "",
+    rows,
+    edited: false,
+    sourceSignature: dailySourceSignature(k),
+  };
+  state.dailyWatchbills[k] = daily;
+  return daily;
+}
+
+function ensureDailyWatchbills(keys = currentMonthKeys(), forceRows = false) {
+  const counts = {};
+  keys.forEach(k => {
+    const id = state.dailyWatchbills[k]?.sectionLeaderId;
+    if (id) counts[id] = (counts[id] || 0) + 1;
+  });
+  keys.forEach(k => {
+    const before = state.dailyWatchbills[k]?.sectionLeaderId;
+    const daily = buildDailyWatchbill(k, forceRows, counts);
+    if (!before && daily.sectionLeaderId) counts[daily.sectionLeaderId] = (counts[daily.sectionLeaderId] || 0) + 1;
+  });
+}
+
+function autoAssignDailyLeaders(overwrite = false) {
+  const counts = {};
+  for (const k of currentMonthKeys()) {
+    const daily = state.dailyWatchbills[k] || buildDailyWatchbill(k, false, counts);
+    if (overwrite || !daily.sectionLeaderId) daily.sectionLeaderId = pickDailyLeader(k, counts);
+    if (daily.sectionLeaderId) counts[daily.sectionLeaderId] = (counts[daily.sectionLeaderId] || 0) + 1;
+  }
+}
+
+function renderDailyWatchbills(main) {
+  const keys = currentMonthKeys();
+  if (!keys.every(k => state.generated[k])) generateMonth();
+  ensureDailyWatchbills(keys, false);
+  if (!keys.includes(ui.dailyDateKey)) ui.dailyDateKey = keys[0];
+  const k = ui.dailyDateKey;
+  const daily = state.dailyWatchbills[k] || buildDailyWatchbill(k);
+  const cfg = state.dayConfigs[k] || {};
+  const result = state.generated[k] || {};
+  const people = state.people.filter(p => p.active !== false);
+  const personOptions = people.map(p => option(p.id, `${p.name}${p.division ? ` — ${p.division}` : ""}`, false)).join("");
+  const leaderOptions = [`<option value="">Not designated</option>`, ...people.map(p => option(p.id, p.name, p.id === daily.sectionLeaderId))].join("");
+  const stale = daily.sourceSignature !== dailySourceSignature(k);
+  const transition = cfg.transition?.enabled ? `<div class="daily-transition"><strong>Transition:</strong> ${esc(cfg.transition.fromSchedule)} → ${esc(cfg.transition.toSchedule)}${cfg.transition.time ? ` at ${esc(cfg.transition.time)}` : ""}<br><span>${esc(getRequirement(cfg.transition.beforeRequirementSetId)?.name || "—")} before / ${esc(getRequirement(cfg.transition.afterRequirementSetId)?.name || "—")} after</span></div>` : "";
+  const rowEditor = (daily.rows || []).map((row, index) => `<tr>
+    <td><select data-daily-row="${index}" data-daily-row-field="personId"><option value="">Open / TBD</option>${people.map(p => option(p.id, p.name, p.id === row.personId)).join("")}</select></td>
+    <td><input data-daily-row="${index}" data-daily-row-field="role" value="${esc(row.role)}"></td>
+    <td><input type="time" data-daily-row="${index}" data-daily-row-field="watchStart" value="${esc(row.watchStart)}"></td>
+    <td><input type="time" data-daily-row="${index}" data-daily-row-field="watchEnd" value="${esc(row.watchEnd)}"></td>
+    <td><input data-daily-row="${index}" data-daily-row-field="notes" value="${esc(row.notes)}"></td>
+    <td><button class="small danger" data-remove-daily-row="${index}">Remove</button></td>
+  </tr>`).join("");
+  const rosterPrint = (daily.rows || []).map((row, index) => {
+    const p = getPerson(row.personId);
+    return `<tr><td>${index + 1}</td><td>${esc(p?.printLabel || p?.name || "OPEN / TBD")}</td><td>${esc(row.role || "DUTY")}</td><td>${esc([row.watchStart, row.watchEnd].filter(Boolean).join("–") || "—")}</td><td>${esc(row.notes || "")}</td></tr>`;
+  }).join("");
+  const leader = getPerson(daily.sectionLeaderId);
+  const transitionDays = keys.filter(x => state.dayConfigs[x]?.transition?.enabled).length;
+  const configuredLeaders = keys.filter(x => state.dailyWatchbills[x]?.sectionLeaderId).length;
+  const monthlyRows = keys.map((date, index) => {
+    const item = state.dailyWatchbills[date] || {};
+    const dateCfg = state.dayConfigs[date] || {};
+    return `<tr class="${date === k ? "selected-daily-row" : ""}"><td><button class="small" data-open-daily="${date}">${index + 1} ${esc(dailyDateLabel(date, { short: true }))}</button></td><td>${esc(dateCfg.scheduleLabel || "")}</td><td>${esc(dateCfg.dutySection ? `Section ${dateCfg.dutySection}` : "Any")}</td><td><select data-daily-leader-date="${date}"><option value="">Not designated</option>${people.map(p => option(p.id, p.name, p.id === item.sectionLeaderId)).join("")}</select></td><td>${dateCfg.transition?.enabled ? `<span class="transition-badge">${esc(dateCfg.transition.fromSchedule)} → ${esc(dateCfg.transition.toSchedule)}</span>` : ""}</td></tr>`;
+  }).join("");
+
+  main.innerHTML = pageHeading("Daily Watchbills", "Automatically build a separate editable duty sheet for every day. Designate a different section leader each day, then edit roles, watch times, notes, or personnel without changing the monthly watchbill.", `<button id="refreshAllDaily" class="primary">Generate / Refresh All</button><button id="autoLeaders">Fill Blank Leaders</button><button id="printDaily">Print Current Daily Watchbill</button>`) + `
+    <div class="kpis screen-only"><div class="kpi"><div class="label">Daily sheets</div><div class="value">${keys.length}</div></div><div class="kpi"><div class="label">Leaders set</div><div class="value">${configuredLeaders}/${keys.length}</div></div><div class="kpi"><div class="label">Transition days</div><div class="value">${transitionDays}</div></div><div class="kpi"><div class="label">Current team</div><div class="value">${daily.rows?.length || 0}</div></div></div>
+    ${stale ? `<div class="notice warn screen-only">This daily sheet differs from the latest monthly assignment. Use <strong>Refresh This Day</strong> to replace its roster while keeping the section leader and header information.</div>` : ""}
+    <div class="panel screen-only"><div class="panel-header">Daily defaults and leader rotation</div><div class="panel-body form-grid">
+      <label class="field">Leader qualification<select id="dailyLeaderQual"><option value="">Any assigned person</option>${state.qualifications.map(q => option(q, q, q === state.dailyWatchbillSettings.leaderQualification)).join("")}</select></label>
+      <label class="field">Default muster time<input id="dailyDefaultTime" type="time" value="${esc(state.dailyWatchbillSettings.defaultMusterTime || "")}"></label>
+      <label class="field">Default muster location<input id="dailyDefaultLocation" value="${esc(state.dailyWatchbillSettings.defaultMusterLocation || "")}"></label>
+      <label class="field">Default title<input id="dailyDefaultTitle" value="${esc(state.dailyWatchbillSettings.title || "")}"></label>
+    </div></div>
+    <div class="grid-2 screen-only daily-layout">
+      <div class="panel"><div class="panel-header">${esc(monthLabel(state.viewYear, state.viewMonth))} section leaders</div><div class="table-wrap daily-month-list"><table class="data-table"><thead><tr><th>Date</th><th>Schedule</th><th>Section</th><th>Section leader</th><th>Transition</th></tr></thead><tbody>${monthlyRows}</tbody></table></div></div>
+      <div class="panel"><div class="panel-header">Edit ${esc(dailyDateLabel(k))}<span><button id="refreshDaily" class="small">Refresh This Day</button></span></div><div class="panel-body form-grid">
+        <label class="field">Date<input id="dailyDatePicker" type="date" min="${keys[0]}" max="${keys[keys.length - 1]}" value="${k}"></label>
+        <label class="field">Section leader<select id="dailySectionLeader">${leaderOptions}</select></label>
+        <label class="field">Muster time<input id="dailyMusterTime" type="time" value="${esc(daily.musterTime || "")}"></label>
+        <label class="field">Muster location<input id="dailyMusterLocation" value="${esc(daily.musterLocation || "")}"></label>
+        <label class="field" style="grid-column:1/-1">Sheet title<input id="dailyTitle" value="${esc(daily.title || "")}"></label>
+        <label class="field" style="grid-column:1/-1">Section leader notes<textarea id="dailyNotes">${esc(daily.notes || "")}</textarea></label>
+      </div><div class="table-wrap"><table class="data-table"><thead><tr><th>Person</th><th>Billet / role</th><th>Start</th><th>End</th><th>Notes</th><th></th></tr></thead><tbody>${rowEditor || `<tr><td colspan="6" class="small-note">No personnel rows yet.</td></tr>`}</tbody></table></div><div class="panel-body"><button id="addDailyRow" class="small">Add editable row</button></div></div>
+    </div>
+    <section class="daily-watchbill-sheet">
+      <div class="daily-sheet-heading"><div><div class="daily-sheet-kicker">${esc(daily.title)}</div><h1>${esc(dailyDateLabel(k))}</h1></div><div class="daily-sheet-status">${esc(cfg.scheduleLabel || "")}</div></div>
+      <div class="daily-meta-grid"><div><span>Duty section</span><strong>${esc(cfg.dutySection ? `Section ${cfg.dutySection}` : "Not fixed")}</strong></div><div><span>Section leader</span><strong>${esc(leader?.name || "NOT DESIGNATED")}</strong></div><div><span>Muster</span><strong>${esc(daily.musterTime || "—")}</strong></div><div><span>Location</span><strong>${esc(daily.musterLocation || "—")}</strong></div><div><span>Requirements</span><strong>${esc(requirementLabelForConfig(cfg))}</strong></div><div><span>Personnel</span><strong>${daily.rows?.length || 0}</strong></div></div>
+      ${transition}
+      <table class="daily-roster-table"><thead><tr><th>#</th><th>Watchstander</th><th>Billet / role</th><th>Watch time</th><th>Notes</th></tr></thead><tbody>${rosterPrint || `<tr><td colspan="5">No assignments</td></tr>`}</tbody></table>
+      <div class="daily-notes"><strong>Section leader notes</strong><div>${esc(daily.notes || "No additional notes.")}</div></div>
+      ${result.warnings?.length ? `<div class="daily-warning"><strong>Coverage warnings:</strong> ${esc(result.warnings.join("; "))}</div>` : ""}
+      <div class="daily-signatures"><div><span>Section Leader</span></div><div><span>Duty Officer / Approval</span></div></div>
+    </section>`;
+
+  const saveDailyMeta = () => { daily.title = document.getElementById("dailyTitle").value; daily.sectionLeaderId = document.getElementById("dailySectionLeader").value; daily.musterTime = document.getElementById("dailyMusterTime").value; daily.musterLocation = document.getElementById("dailyMusterLocation").value; daily.notes = document.getElementById("dailyNotes").value; saveState(); render(); };
+  ["dailySectionLeader", "dailyMusterTime", "dailyMusterLocation", "dailyTitle", "dailyNotes"].forEach(id => document.getElementById(id)?.addEventListener("change", saveDailyMeta));
+  document.getElementById("dailyDatePicker")?.addEventListener("change", e => { if (keys.includes(e.target.value)) { ui.dailyDateKey = e.target.value; render(); } });
+  main.querySelectorAll("[data-open-daily]").forEach(button => button.addEventListener("click", () => { ui.dailyDateKey = button.dataset.openDaily; render(); }));
+  main.querySelectorAll("[data-daily-leader-date]").forEach(select => select.addEventListener("change", () => { state.dailyWatchbills[select.dataset.dailyLeaderDate].sectionLeaderId = select.value; saveState(); render(); }));
+  main.querySelectorAll("[data-daily-row][data-daily-row-field]").forEach(input => input.addEventListener("change", () => { const row = daily.rows[Number(input.dataset.dailyRow)]; if (!row) return; row[input.dataset.dailyRowField] = input.value; daily.edited = true; saveState(); render(); }));
+  main.querySelectorAll("[data-remove-daily-row]").forEach(button => button.addEventListener("click", () => { daily.rows.splice(Number(button.dataset.removeDailyRow), 1); daily.edited = true; saveState(); render(); }));
+  document.getElementById("addDailyRow")?.addEventListener("click", () => { daily.rows.push({ id: uid("dailyrow"), personId: "", role: "DUTY", watchStart: "", watchEnd: "", notes: "" }); daily.edited = true; saveState(); render(); });
+  document.getElementById("refreshDaily")?.addEventListener("click", () => { buildDailyWatchbill(k, true, {}); saveState(); render(); });
+  document.getElementById("refreshAllDaily")?.addEventListener("click", () => { ensureDailyWatchbills(keys, true); autoAssignDailyLeaders(false); saveState(); render(); });
+  document.getElementById("autoLeaders")?.addEventListener("click", () => { autoAssignDailyLeaders(false); saveState(); render(); });
+  document.getElementById("printDaily")?.addEventListener("click", () => printDailyWatchbillPdf(k));
+  const dailySetting = (id, prop) => document.getElementById(id)?.addEventListener("change", e => { state.dailyWatchbillSettings[prop] = e.target.value; saveState(); render(); });
+  dailySetting("dailyLeaderQual", "leaderQualification"); dailySetting("dailyDefaultTime", "defaultMusterTime"); dailySetting("dailyDefaultLocation", "defaultMusterLocation"); dailySetting("dailyDefaultTitle", "title");
+}
+
+
+/**
+ * 06-personnel.js
+ * Personnel roster and qualification editing.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function autoPrintLabel(p) {
+  const suffix = { E6: "1", E5: "2", E4: "3", E3: "SN", E2: "SA", E1: "SR" }[String(p.rank).toUpperCase()] || p.rank || "";
+  const fish = p.fish ? "(SS)" : "(SU)";
+  const qs = (p.qualifications || []).length ? ` (${p.qualifications.join("/")})` : " (Extra)";
+  return `${p.rate || ""}${suffix}${fish} ${p.name || ""}${qs}`.trim();
+}
+
+function renderPeople(main) {
+  if (!getPerson(ui.editPersonId)) ui.editPersonId = state.people[0]?.id || null;
+  const selected = getPerson(ui.editPersonId);
+  const divisions = unique(state.people.map(p => p.division).filter(Boolean));
+  let rows = state.people.map(p => `<tr>
+    <td>${esc(p.name)}</td><td>${esc(p.division)}</td><td>${esc(p.rate)}</td><td>${esc(p.rank)}</td>
+    <td><div class="tag-list">${(p.qualifications || []).map(q => `<span class="tag" style="background:${esc(state.formatting?.qualificationColors?.[q] || '#eef4f8')}">${esc(q)}</span>`).join("") || '<span class="tag muted">None</span>'}</div></td>
+    <td>${p.dutySection ? esc(`Section ${p.dutySection}`) : "—"}</td><td>${p.active === false ? "Inactive" : "Active"}</td>
+    <td><button class="small" data-edit-person="${esc(p.id)}">Edit</button> <button class="small danger" data-delete-person="${esc(p.id)}">Delete</button></td>
+  </tr>`).join("");
+
+  let editor = `<div class="notice warn">Add or select a person to edit their qualifications.</div>`;
+  if (selected) {
+    editor = `<div class="form-grid">
+      <label class="field">Name<input id="personName" value="${esc(selected.name)}"></label>
+      <label class="field">Division<input id="personDivision" list="divisionList" value="${esc(selected.division)}"><datalist id="divisionList">${divisions.map(d => `<option value="${esc(d)}"></option>`).join("")}</datalist></label>
+      <label class="field">Rate<input id="personRate" value="${esc(selected.rate)}"></label>
+      <label class="field">Rank / paygrade<input id="personRank" value="${esc(selected.rank)}"></label>
+      <label class="field">Duty section<select id="personSection"><option value="">None / flexible</option>${state.dutySections.map(s => option(s, `Section ${s}`, selected.dutySection === s)).join("")}</select></label>
+      <label class="field">Submarine qualified<select id="personFish"><option value="1" ${selected.fish ? "selected" : ""}>Yes — (SS)</option><option value="0" ${!selected.fish ? "selected" : ""}>No — (SU)</option></select></label>
+      <label class="field">Active<select id="personActive"><option value="1" ${selected.active !== false ? "selected" : ""}>Active</option><option value="0" ${selected.active === false ? "selected" : ""}>Inactive</option></select></label>
+      <label class="field" style="grid-column:span 3">Print label<input id="personPrintLabel" value="${esc(selected.printLabel || selected.name)}"></label>
+      <div class="field"><span>&nbsp;</span><button id="autoLabel">Rebuild print label</button></div>
+    </div>
+    <div class="req-section" style="margin-top:12px"><h3>Qualifications</h3><div class="inside"><div class="check-grid">${state.qualifications.map(q => `<label class="check-pill"><input type="checkbox" data-person-qual="${esc(q)}" ${(selected.qualifications || []).includes(q) ? "checked" : ""}> ${esc(q)}</label>`).join("")}</div></div></div>`;
+  }
+
+  main.innerHTML = pageHeading("Personnel", "Edit the roster, qualifications, print labels, duty sections, and active status.", `<button id="addPerson" class="primary">Add person</button>`) + `
+    <div class="panel"><div class="panel-header">Person editor</div><div class="panel-body">${editor}</div></div>
+    <div class="panel"><div class="panel-header">Roster (${state.people.length})</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Division</th><th>Rate</th><th>Rank</th><th>Qualifications</th><th>Duty section</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+
+  document.getElementById("addPerson")?.addEventListener("click", () => {
+    const p = { id: uid("p"), name: "New Person", division: divisions[0] || "", rate: "", rank: "", fish: false, printLabel: "New Person", dutySection: "", active: true, qualifications: [] };
+    state.people.push(p); ui.editPersonId = p.id; clearGeneratedMonth(); saveState(); render();
+  });
+  main.querySelectorAll("[data-edit-person]").forEach(b => b.addEventListener("click", () => { ui.editPersonId = b.dataset.editPerson; render(); }));
+  main.querySelectorAll("[data-delete-person]").forEach(b => b.addEventListener("click", () => {
+    const p = getPerson(b.dataset.deletePerson); if (!p) return;
+    if (!confirm(`Delete ${p.name}? This also deletes their absences and manual overrides.`)) return;
+    state.people = state.people.filter(x => x.id !== p.id);
+    state.absences = state.absences.filter(a => a.personId !== p.id);
+    Object.values(state.manualOverrides).forEach(o => delete o[p.id]);
+    ui.editPersonId = state.people[0]?.id || null; clearGeneratedMonth(); saveState(); render();
+  }));
+  if (selected) {
+    const bind = (id, prop, transform = v => v) => document.getElementById(id)?.addEventListener("change", e => {
+      selected[prop] = transform(e.target.value); clearGeneratedMonth(); saveState(); render();
+    });
+    bind("personName", "name"); bind("personDivision", "division"); bind("personRate", "rate"); bind("personRank", "rank"); bind("personSection", "dutySection");
+    bind("personFish", "fish", v => v === "1"); bind("personActive", "active", v => v === "1"); bind("personPrintLabel", "printLabel");
+    main.querySelectorAll("[data-person-qual]").forEach(c => c.addEventListener("change", () => {
+      selected.qualifications ||= [];
+      if (c.checked) selected.qualifications = unique([...selected.qualifications, c.dataset.personQual]);
+      else selected.qualifications = selected.qualifications.filter(q => q !== c.dataset.personQual);
+      clearGeneratedMonth(); saveState(); render();
+    }));
+    document.getElementById("autoLabel")?.addEventListener("click", () => { selected.printLabel = autoPrintLabel(selected); saveState(); render(); });
+  }
+}
+
+
+/**
+ * 07-requirements.js
+ * Requirement sets, billets, minimums, and double-fill rules.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function renderMinimumEditor(req, prop, title, help) {
+  const obj = req[prop] || {};
+  const rows = Object.entries(obj).map(([q, n]) => `<tr>
+    <td><select data-min-kind="${prop}" data-min-old="${esc(q)}" data-min-field="qual">${state.qualifications.map(x => option(x, x, x === q)).join("")}</select></td>
+    <td><input type="number" min="0" step="1" value="${Number(n) || 0}" data-min-kind="${prop}" data-min-old="${esc(q)}" data-min-field="count"></td>
+    <td><button class="small danger" data-remove-min="${prop}" data-min-qual="${esc(q)}">Remove</button></td>
+  </tr>`).join("");
+  return `<div class="req-section"><h3>${esc(title)}</h3><div class="inside"><div class="small-note" style="margin-bottom:8px">${esc(help)}</div>
+    <table class="data-table"><thead><tr><th>Qualification</th><th>Minimum people</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="small-note">No minimums configured.</td></tr>'}</tbody></table>
+    <button class="small" data-add-min="${prop}" style="margin-top:8px">Add minimum</button>
+  </div></div>`;
+}
+
+function renderRequirements(main) {
+  if (!getRequirement(ui.selectedRequirementId)) ui.selectedRequirementId = state.requirements[0]?.id || null;
+  const req = getRequirement(ui.selectedRequirementId);
+  const list = state.requirements.map(r => `<button class="${r.id === ui.selectedRequirementId ? "active" : ""}" data-select-req="${esc(r.id)}">${esc(r.name)}</button>`).join("");
+  let editor = `<div class="notice warn">Create a requirement set to begin.</div>`;
+  if (req) {
+    const billetRows = (req.billets || []).map((b, i) => `<tr>
+      <td><input data-billet-index="${i}" data-billet-field="name" value="${esc(b.name)}"></td>
+      <td><input type="number" min="1" step="1" data-billet-index="${i}" data-billet-field="count" value="${Number(b.count) || 1}"></td>
+      <td><input data-billet-index="${i}" data-billet-field="eligibleQuals" value="${esc((b.eligibleQuals || []).join(", "))}" placeholder="RO or SEO, RT"></td>
+      <td><button class="small danger" data-remove-billet="${i}">Remove</button></td>
+    </tr>`).join("");
+    const dfRows = (req.doubleFillRules || []).map((r, i) => `<tr>
+      <td><select data-df-index="${i}" data-df-field="anchorQualification">${state.qualifications.map(q => option(q, q, q === r.anchorQualification)).join("")}</select></td>
+      <td><input type="number" min="1" max="5" step="1" data-df-index="${i}" data-df-field="maxAdditionalBillets" value="${Number(r.maxAdditionalBillets) || 1}"></td>
+      <td><button class="small danger" data-remove-df="${i}">Remove</button></td>
+    </tr>`).join("");
+
+    editor = `<div class="panel"><div class="panel-header">Requirement set editor<div class="toolbar"><button id="cloneReq" class="small">Clone</button><button id="deleteReq" class="small danger">Delete</button></div></div><div class="panel-body">
+      <div class="form-grid" style="margin-bottom:12px">
+        <label class="field" style="grid-column:span 2">Name<input id="reqName" value="${esc(req.name)}"></label>
+        <label class="field">Minimum total people<input id="reqMinPersonnel" type="number" min="0" step="1" value="${Number(req.minPersonnel) || 0}"></label>
+        <label class="field">Preferred staffing count<input id="reqPreferredPersonnel" type="number" min="0" step="1" value="${Number(req.preferredPersonnel) || 0}"><span class="small-note">0 = automatic. The solver tries to stay at or below this count by using valid double-fills.</span></label>
+      </div>
+      <div class="req-section"><h3>Primary billets</h3><div class="inside">
+        <div class="small-note" style="margin-bottom:8px">Each row creates one or more billets. "Eligible qualifications" may contain alternatives separated by commas, so a billet can be filled by SEO <em>or</em> RT.</div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Billet name</th><th>Count</th><th>Eligible qualifications</th><th></th></tr></thead><tbody>${billetRows || '<tr><td colspan="4" class="small-note">No billets configured.</td></tr>'}</tbody></table></div>
+        <button id="addBillet" class="small" style="margin-top:8px">Add billet</button>
+      </div></div>
+      ${renderMinimumEditor(req, "qualificationMinimums", "Duty section qualification minimums", "These count qualified people in the total assigned group. A person may count toward more than one qualification minimum.")}
+      ${renderMinimumEditor(req, "operationalMinimums", "Operational watchstanding minimums", "A second independent set of qualification minimums. Both sets must be satisfied.")}
+      <div class="req-section"><h3>Double-fill exceptions</h3><div class="inside">
+        <div class="small-note" style="margin-bottom:8px">An anchor qualification lets a person fill the anchor billet plus additional primary billets. With ELT + 1, an ELT may fill ELT and one other billet if qualified.</div>
+        <table class="data-table"><thead><tr><th>Anchor qualification</th><th>Additional billets allowed</th><th></th></tr></thead><tbody>${dfRows || '<tr><td colspan="3" class="small-note">No double-fill exceptions.</td></tr>'}</tbody></table>
+        <button id="addDf" class="small" style="margin-top:8px">Add double-fill rule</button>
+      </div></div>
+    </div></div>`;
+  }
+
+  main.innerHTML = pageHeading("Requirement Sets", "Create as many duty conditions as you need. Nothing in the scheduling engine is tied to a specific qualification name.", `<button id="newReq" class="primary">New set</button>`) + `
+    <div class="split-layout"><div class="list-card screen-only">${list || '<div class="small-note" style="padding:12px">No sets</div>'}</div><div>${editor}</div></div>`;
+
+  main.querySelectorAll("[data-select-req]").forEach(b => b.addEventListener("click", () => { ui.selectedRequirementId = b.dataset.selectReq; render(); }));
+  document.getElementById("newReq")?.addEventListener("click", () => {
+    const r = { id: uid("req"), name: "New Requirement Set", billets: [], qualificationMinimums: {}, operationalMinimums: {}, doubleFillRules: [], minPersonnel: 0, preferredPersonnel: 0 };
+    state.requirements.push(r); ui.selectedRequirementId = r.id; clearGeneratedMonth(); saveState(); render();
+  });
+  if (!req) return;
+  document.getElementById("reqName")?.addEventListener("change", e => { req.name = e.target.value.trim() || "Unnamed Set"; saveState(); render(); });
+  document.getElementById("reqMinPersonnel")?.addEventListener("change", e => { req.minPersonnel = Math.max(0, Number(e.target.value) || 0); clearGeneratedMonth(); saveState(); render(); });
+  document.getElementById("reqPreferredPersonnel")?.addEventListener("change", e => { req.preferredPersonnel = Math.max(0, Number(e.target.value) || 0); clearGeneratedMonth(); saveState(); render(); });
+  document.getElementById("addBillet")?.addEventListener("click", () => { req.billets ||= []; req.billets.push({ id: uid("billet"), name: "New Billet", count: 1, eligibleQuals: [state.qualifications[0]].filter(Boolean) }); clearGeneratedMonth(); saveState(); render(); });
+  main.querySelectorAll("[data-billet-index][data-billet-field]").forEach(el => el.addEventListener("change", () => {
+    const b = req.billets[Number(el.dataset.billetIndex)]; if (!b) return;
+    const f = el.dataset.billetField;
+    if (f === "count") b.count = Math.max(1, Number(el.value) || 1);
+    else if (f === "eligibleQuals") b.eligibleQuals = unique(el.value.split(",").map(normalizeQual).filter(Boolean));
+    else b[f] = el.value.trim();
+    clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-remove-billet]").forEach(b => b.addEventListener("click", () => { req.billets.splice(Number(b.dataset.removeBillet), 1); clearGeneratedMonth(); saveState(); render(); }));
+
+  main.querySelectorAll("[data-add-min]").forEach(b => b.addEventListener("click", () => {
+    const prop = b.dataset.addMin; req[prop] ||= {};
+    const q = state.qualifications.find(x => !(x in req[prop]));
+    if (!q) return alert("Every qualification already has a row in this section.");
+    req[prop][q] = 1; clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-min-kind][data-min-old][data-min-field]").forEach(el => el.addEventListener("change", () => {
+    const prop = el.dataset.minKind, oldQ = el.dataset.minOld; req[prop] ||= {};
+    if (el.dataset.minField === "count") req[prop][oldQ] = Math.max(0, Number(el.value) || 0);
+    else {
+      const newQ = el.value;
+      const count = req[prop][oldQ] || 0;
+      delete req[prop][oldQ]; req[prop][newQ] = count;
+    }
+    clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-remove-min]").forEach(b => b.addEventListener("click", () => { delete req[b.dataset.removeMin][b.dataset.minQual]; clearGeneratedMonth(); saveState(); render(); }));
+
+  document.getElementById("addDf")?.addEventListener("click", () => { req.doubleFillRules ||= []; req.doubleFillRules.push({ id: uid("df"), anchorQualification: state.qualifications[0] || "", maxAdditionalBillets: 1 }); clearGeneratedMonth(); saveState(); render(); });
+  main.querySelectorAll("[data-df-index][data-df-field]").forEach(el => el.addEventListener("change", () => {
+    const r = req.doubleFillRules[Number(el.dataset.dfIndex)]; if (!r) return;
+    r[el.dataset.dfField] = el.dataset.dfField === "maxAdditionalBillets" ? Math.max(1, Number(el.value) || 1) : el.value;
+    clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-remove-df]").forEach(b => b.addEventListener("click", () => { req.doubleFillRules.splice(Number(b.dataset.removeDf), 1); clearGeneratedMonth(); saveState(); render(); }));
+  document.getElementById("cloneReq")?.addEventListener("click", () => {
+    const copy = clone(req); copy.id = uid("req"); copy.name = `${req.name} Copy`; copy.billets.forEach(x => x.id = uid("billet")); copy.doubleFillRules.forEach(x => x.id = uid("df"));
+    state.requirements.push(copy); ui.selectedRequirementId = copy.id; clearGeneratedMonth(); saveState(); render();
+  });
+  document.getElementById("deleteReq")?.addEventListener("click", () => {
+    if (state.requirements.length <= 1) return alert("Keep at least one requirement set.");
+    if (!confirm(`Delete ${req.name}? Days using it will be switched to the first remaining set.`)) return;
+    state.requirements = state.requirements.filter(r => r.id !== req.id);
+    const replacement = state.requirements[0]?.id || "";
+    Object.values(state.dayConfigs).forEach(c => { if (c.requirementSetId === req.id) c.requirementSetId = replacement; });
+    ui.selectedRequirementId = replacement; clearGeneratedMonth(); saveState(); render();
+  });
+}
+
+
+/**
+ * 08-absences.js
+ * Leave, school, TAD, and other unavailability records.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function renderAbsences(main) {
+  const personOptions = state.people.filter(p => p.active !== false).map(p => option(p.id, `${p.name} — ${p.division}`, false)).join("");
+  const typeOptions = state.absenceTypes.map(t => option(t.id, `${t.name} (${t.code})`, false)).join("");
+  const firstKey = dateKey(state.viewYear, state.viewMonth, 1), lastKey = dateKey(state.viewYear, state.viewMonth, daysInMonth(state.viewYear, state.viewMonth));
+  const rows = state.absences.slice().sort((a,b) => a.start.localeCompare(b.start)).map(a => {
+    const p = getPerson(a.personId), t = getAbsenceType(a.typeId);
+    return `<tr>
+      <td><select data-abs-id="${a.id}" data-abs-field="personId">${state.people.map(x => option(x.id, x.name, x.id === a.personId)).join("")}</select></td>
+      <td><select data-abs-id="${a.id}" data-abs-field="typeId">${state.absenceTypes.map(x => option(x.id, x.name, x.id === a.typeId)).join("")}</select></td>
+      <td><input type="date" data-abs-id="${a.id}" data-abs-field="start" value="${esc(a.start)}"></td>
+      <td><input type="date" data-abs-id="${a.id}" data-abs-field="end" value="${esc(a.end)}"></td>
+      <td><input data-abs-id="${a.id}" data-abs-field="note" value="${esc(a.note || "")}"></td>
+      <td><span class="color-chip" style="background:${esc(t?.color || "#eee")}"></span> ${esc(t?.code || "")}</td>
+      <td><button class="small danger" data-delete-abs="${a.id}">Delete</button></td>
+    </tr>`;
+  }).join("");
+  main.innerHTML = pageHeading("Leave / School / Other", "Date ranges automatically remove personnel from eligible duty candidates when the absence type blocks duty.") + `
+    <div class="panel"><div class="panel-header">Add unavailability</div><div class="panel-body form-grid">
+      <label class="field">Person<select id="newAbsPerson">${personOptions}</select></label>
+      <label class="field">Reason<select id="newAbsType">${typeOptions}</select></label>
+      <label class="field">Start<input id="newAbsStart" type="date" value="${firstKey}"></label>
+      <label class="field">End<input id="newAbsEnd" type="date" value="${lastKey}"></label>
+      <label class="field" style="grid-column:span 3">Note<input id="newAbsNote" placeholder="Optional note"></label>
+      <div class="field"><span>&nbsp;</span><button id="addAbs" class="primary">Add</button></div>
+    </div></div>
+    <div class="panel"><div class="panel-header">Tracked absences (${state.absences.length})</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Person</th><th>Reason</th><th>Start</th><th>End</th><th>Note</th><th>Print code</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="7" class="small-note">No absences recorded.</td></tr>'}</tbody></table></div></div>`;
+  document.getElementById("addAbs")?.addEventListener("click", () => {
+    const personId = document.getElementById("newAbsPerson").value, typeId = document.getElementById("newAbsType").value;
+    let start = document.getElementById("newAbsStart").value, end = document.getElementById("newAbsEnd").value;
+    if (!personId || !typeId || !start || !end) return alert("Person, reason, start, and end are required.");
+    if (end < start) [start, end] = [end, start];
+    state.absences.push({ id: uid("abs"), personId, typeId, start, end, note: document.getElementById("newAbsNote").value.trim() });
+    clearGeneratedMonth(); saveState(); render();
+  });
+  main.querySelectorAll("[data-abs-id][data-abs-field]").forEach(el => el.addEventListener("change", () => {
+    const a = state.absences.find(x => x.id === el.dataset.absId); if (!a) return; a[el.dataset.absField] = el.value;
+    if (a.end < a.start) a.end = a.start;
+    clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-delete-abs]").forEach(b => b.addEventListener("click", () => { state.absences = state.absences.filter(a => a.id !== b.dataset.deleteAbs); clearGeneratedMonth(); saveState(); render(); }));
+}
+
+
+/**
+ * 09-special-days.js
+ * Weekend and holiday configuration.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function renderSpecialDays(main) {
+  const keys = currentMonthKeys();
+  const sd = state.specialDaySettings || (state.specialDaySettings = {});
+  const fmt = state.formatting || (state.formatting = {});
+  const gt24 = state.requirements.find(r => r.name === ">24 Hr");
+  const benchmarkPeople = ["Rickert","Hurtado","Fossan","Lemoine","Hickox","Rollins"].filter(n => state.people.some(p => p.name === n));
+  const rows = keys.map((k,i) => {
+    const cfg=state.dayConfigs[k]||{};
+    const dt=new Date(state.viewYear,state.viewMonth-1,i+1);
+    const dayName=dt.toLocaleString(undefined,{weekday:'long'});
+    const wknd=isWeekend(state.viewYear,state.viewMonth,i+1);
+    return `<tr style="background:${cfg.holiday ? esc(fmt.holidayColor||'#fff2cc') : (wknd ? esc(fmt.weekendColor||'#f2f2f2') : '#fff')}"><td>${i+1}</td><td>${esc(dayName)}</td><td>${wknd ? 'Weekend' : 'Weekday'}</td><td style="text-align:center"><input type="checkbox" data-special-day="${k}" data-special-field="holiday" ${cfg.holiday?'checked':''}></td><td><input data-special-day="${k}" data-special-field="holidayName" value="${esc(cfg.holidayName||'')}" placeholder="Holiday name"></td><td>${esc(getRequirement(cfg.requirementSetId)?.name||'—')}</td><td>${esc(cfg.scheduleLabel||'')}</td></tr>`;
+  }).join('');
+  main.innerHTML = pageHeading("Weekends & Holidays", "Set weekend/holiday defaults, name holidays, balance weekend duty separately, and choose the colors used on the watchbill.") + `
+    <div class="notice good"><strong>&gt;24 Hr Saturday benchmark:</strong> preferred staffing is ${Number(gt24?.preferredPersonnel)||0 || 'automatic'} people.${benchmarkPeople.length===6 ? ` Your workbook example is ${benchmarkPeople.map(esc).join(', ')}.` : ''} The solver uses ELT double-fill rules and still checks SRO/SEO/SRW minimums.</div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-header">Weekend defaults</div><div class="panel-body form-grid">
+        <label class="field">Weekend requirement set<select id="weekendReq">${state.requirements.map(r=>option(r.id,r.name,r.id===sd.weekendRequirementSetId)).join('')}</select></label>
+        <label class="field">Weekend schedule<select id="weekendSched">${state.scheduleLabels.map(x=>option(x,x,x===sd.weekendScheduleLabel)).join('')}</select></label>
+        <label class="field">Weekend fairness weight<input id="specialWeekendWeight" type="number" min="0" max="500" value="${Number(state.schedulerSettings.weekendWeight)||0}"></label>
+        <label class="field">Weekend color<input id="weekendColor" type="color" value="${esc(fmt.weekendColor||'#f2f2f2')}"></label>
+        <div class="field" style="grid-column:1/-1"><button id="applyWeekendDefaults" class="primary">Apply weekend defaults to this month</button></div>
+      </div></div>
+      <div class="panel"><div class="panel-header">Holiday defaults</div><div class="panel-body form-grid">
+        <label class="field">Holiday requirement set<select id="holidayReq">${state.requirements.map(r=>option(r.id,r.name,r.id===sd.holidayRequirementSetId)).join('')}</select></label>
+        <label class="field">Holiday schedule<select id="holidaySched">${state.scheduleLabels.map(x=>option(x,x,x===sd.holidayScheduleLabel)).join('')}</select></label>
+        <label class="field">Holiday fairness weight<input id="specialHolidayWeight" type="number" min="0" max="500" value="${Number(state.schedulerSettings.holidayWeight)||0}"></label>
+        <label class="field">Holiday color<input id="holidayColor" type="color" value="${esc(fmt.holidayColor||'#fff2cc')}"></label>
+        <div class="field" style="grid-column:1/-1"><button id="applyHolidayDefaults" class="primary">Apply defaults to marked holidays</button></div>
+      </div></div>
+    </div>
+    <div class="panel"><div class="panel-header">${esc(monthLabel(state.viewYear,state.viewMonth))} special days</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Day</th><th>Day of week</th><th>Type</th><th>Holiday</th><th>Holiday name</th><th>Requirement</th><th>Schedule</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+
+  const bindSelect=(id,prop)=>document.getElementById(id)?.addEventListener('change',e=>{sd[prop]=e.target.value;saveState();});
+  bindSelect('weekendReq','weekendRequirementSetId'); bindSelect('weekendSched','weekendScheduleLabel'); bindSelect('holidayReq','holidayRequirementSetId'); bindSelect('holidaySched','holidayScheduleLabel');
+  document.getElementById('specialWeekendWeight')?.addEventListener('change',e=>{state.schedulerSettings.weekendWeight=Math.max(0,Number(e.target.value)||0);clearGeneratedMonth();saveState();render();});
+  document.getElementById('specialHolidayWeight')?.addEventListener('change',e=>{state.schedulerSettings.holidayWeight=Math.max(0,Number(e.target.value)||0);clearGeneratedMonth();saveState();render();});
+  document.getElementById('weekendColor')?.addEventListener('change',e=>{fmt.weekendColor=e.target.value;saveState();render();});
+  document.getElementById('holidayColor')?.addEventListener('change',e=>{fmt.holidayColor=e.target.value;saveState();render();});
+  main.querySelectorAll('[data-special-day][data-special-field]').forEach(el=>el.addEventListener('change',()=>{
+    const cfg=state.dayConfigs[el.dataset.specialDay]; cfg[el.dataset.specialField]=el.type==='checkbox'?el.checked:el.value; clearGeneratedMonth(); saveState(); render();
+  }));
+  document.getElementById('applyWeekendDefaults')?.addEventListener('click',()=>{
+    keys.forEach((k,i)=>{if(isWeekend(state.viewYear,state.viewMonth,i+1)){state.dayConfigs[k].requirementSetId=sd.weekendRequirementSetId||state.dayConfigs[k].requirementSetId;state.dayConfigs[k].scheduleLabel=sd.weekendScheduleLabel||state.dayConfigs[k].scheduleLabel;}});clearGeneratedMonth();saveState();render();
+  });
+  document.getElementById('applyHolidayDefaults')?.addEventListener('click',()=>{
+    keys.forEach(k=>{if(state.dayConfigs[k].holiday){state.dayConfigs[k].requirementSetId=sd.holidayRequirementSetId||state.dayConfigs[k].requirementSetId;state.dayConfigs[k].scheduleLabel=sd.holidayScheduleLabel||state.dayConfigs[k].scheduleLabel;}});clearGeneratedMonth();saveState();render();
+  });
+}
+
+
+/**
+ * 10-approvals-and-formatting.js
+ * Approval authorities and color formatting.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function renderApprovals(main) {
+  const fmt=state.formatting||(state.formatting={});
+  const approverRows=(state.approvers||[]).map((a,i)=>`<tr><td><input data-appr-index="${i}" data-appr-field="role" value="${esc(a.role||'')}"></td><td><input data-appr-index="${i}" data-appr-field="name" value="${esc(a.name||'')}" placeholder="Optional printed name"></td><td style="text-align:center"><input type="checkbox" data-appr-index="${i}" data-appr-field="enabled" ${a.enabled!==false?'checked':''}></td><td><button class="small danger" data-remove-appr="${i}">Remove</button></td></tr>`).join('');
+  const scheduleRows=state.scheduleLabels.map(label=>`<tr><td>${esc(label)}</td><td><input type="color" data-schedule-color="${esc(label)}" value="${esc(fmt.scheduleColors?.[label]||'#ffffff')}"></td></tr>`).join('');
+  const qualRows=state.qualifications.map(q=>`<tr><td><span class="tag" style="background:${esc(fmt.qualificationColors?.[q]||'#eef4f8')}">${esc(q)}</span></td><td><input type="color" data-qual-color="${esc(q)}" value="${esc(fmt.qualificationColors?.[q]||'#eef4f8')}"></td></tr>`).join('');
+  main.innerHTML=pageHeading("Approvals & Formatting", "Edit who can approve the watchbill and control the colors used for weekends, holidays, schedules, qualifications, assignments, and division rows.")+`
+    <div class="panel"><div class="panel-header">Watchbill approval block</div><div class="panel-body form-grid"><label class="field" style="grid-column:span 2">Approval section title<input id="approvalTitle" value="${esc(state.approvalSettings?.title||'WATCHBILL APPROVAL')}"></label><label class="field">Approval background<input id="approvalColor" type="color" value="${esc(fmt.approvalColor||'#ffffff')}"></label><div class="field"><span>&nbsp;</span><button id="addApprover" class="primary">Add approver</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Role / authority</th><th>Name</th><th>Print</th><th></th></tr></thead><tbody>${approverRows||'<tr><td colspan="4" class="small-note">No approvers configured.</td></tr>'}</tbody></table></div></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-header">Watchbill colors</div><div class="panel-body form-grid"><label class="field">Weekend<input id="fmtWeekend" type="color" value="${esc(fmt.weekendColor||'#f2f2f2')}"></label><label class="field">Holiday<input id="fmtHoliday" type="color" value="${esc(fmt.holidayColor||'#fff2cc')}"></label><label class="field">Assigned duty<input id="fmtAssigned" type="color" value="${esc(fmt.assignedColor||'#e9eef2')}"></label><label class="field">Division rows<input id="fmtDivision" type="color" value="${esc(fmt.divisionColor||'#f4f4f4')}"></label><label class="field" style="grid-column:span 2">Color assigned duty cells by billet qualification<select id="fmtByQual"><option value="1" ${fmt.colorDutyByQualification!==false?'selected':''}>Yes</option><option value="0" ${fmt.colorDutyByQualification===false?'selected':''}>No</option></select></label></div></div>
+      <div class="panel"><div class="panel-header">Schedule colors</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Schedule</th><th>Color</th></tr></thead><tbody>${scheduleRows}</tbody></table></div></div>
+    </div>
+    <div class="panel"><div class="panel-header">Qualification colors</div><div class="small-note panel-body">These colors appear on qualification tags and, when enabled above, on assigned duty cells based on the billet qualification being filled.</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Qualification</th><th>Color</th></tr></thead><tbody>${qualRows}</tbody></table></div></div>`;
+  document.getElementById('approvalTitle')?.addEventListener('change',e=>{state.approvalSettings.title=e.target.value.trim()||'WATCHBILL APPROVAL';saveState();render();});
+  document.getElementById('approvalColor')?.addEventListener('change',e=>{fmt.approvalColor=e.target.value;saveState();render();});
+  document.getElementById('addApprover')?.addEventListener('click',()=>{state.approvers.push({id:uid('appr'),role:'NEW APPROVER',name:'',enabled:true});saveState();render();});
+  main.querySelectorAll('[data-appr-index][data-appr-field]').forEach(el=>el.addEventListener('change',()=>{const a=state.approvers[Number(el.dataset.apprIndex)];if(!a)return;a[el.dataset.apprField]=el.type==='checkbox'?el.checked:el.value;saveState();render();}));
+  main.querySelectorAll('[data-remove-appr]').forEach(b=>b.addEventListener('click',()=>{state.approvers.splice(Number(b.dataset.removeAppr),1);saveState();render();}));
+  const colorBind=(id,prop)=>document.getElementById(id)?.addEventListener('change',e=>{fmt[prop]=e.target.value;saveState();render();});
+  colorBind('fmtWeekend','weekendColor');colorBind('fmtHoliday','holidayColor');colorBind('fmtAssigned','assignedColor');colorBind('fmtDivision','divisionColor');
+  document.getElementById('fmtByQual')?.addEventListener('change',e=>{fmt.colorDutyByQualification=e.target.value==='1';saveState();render();});
+  main.querySelectorAll('[data-schedule-color]').forEach(el=>el.addEventListener('change',()=>{fmt.scheduleColors||={};fmt.scheduleColors[el.dataset.scheduleColor]=el.value;saveState();render();}));
+  main.querySelectorAll('[data-qual-color]').forEach(el=>el.addEventListener('change',()=>{fmt.qualificationColors||={};fmt.qualificationColors[el.dataset.qualColor]=el.value;saveState();render();}));
+}
+
+
+/**
+ * 11-settings-and-data.js
+ * Qualification maintenance, settings, backup export, and invalidation.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function qualificationUsage(q) {
+  let n = state.people.reduce((sum,p) => sum + ((p.qualifications || []).includes(q) ? 1 : 0), 0);
+  state.requirements.forEach(r => {
+    (r.billets || []).forEach(b => { if ((b.eligibleQuals || []).includes(q)) n++; });
+    if ((r.qualificationMinimums || {})[q] != null) n++;
+    if ((r.operationalMinimums || {})[q] != null) n++;
+    (r.doubleFillRules || []).forEach(x => { if (x.anchorQualification === q) n++; });
+  });
+  return n;
+}
+
+function renameQualification(oldQ, newQ) {
+  newQ = normalizeQual(newQ);
+  if (!newQ || oldQ === newQ) return true;
+  if (state.qualifications.includes(newQ)) { alert(`${newQ} already exists.`); return false; }
+  state.qualifications = state.qualifications.map(q => q === oldQ ? newQ : q);
+  state.formatting ||= {}; state.formatting.qualificationColors ||= {};
+  if (state.formatting.qualificationColors[oldQ]) { state.formatting.qualificationColors[newQ] = state.formatting.qualificationColors[oldQ]; delete state.formatting.qualificationColors[oldQ]; }
+  state.people.forEach(p => p.qualifications = unique((p.qualifications || []).map(q => q === oldQ ? newQ : q)));
+  state.requirements.forEach(r => {
+    (r.billets || []).forEach(b => b.eligibleQuals = unique((b.eligibleQuals || []).map(q => q === oldQ ? newQ : q)));
+    for (const prop of ["qualificationMinimums", "operationalMinimums"]) {
+      r[prop] ||= {};
+      if (Object.prototype.hasOwnProperty.call(r[prop], oldQ)) { r[prop][newQ] = r[prop][oldQ]; delete r[prop][oldQ]; }
+    }
+    (r.doubleFillRules || []).forEach(x => { if (x.anchorQualification === oldQ) x.anchorQualification = newQ; });
+  });
+  clearGeneratedMonth();
+  return true;
+}
+
+function removeQualification(q) {
+  const use = qualificationUsage(q);
+  if (use && !confirm(`${q} is referenced ${use} time(s). Remove it from people and requirement sets too?`)) return;
+  state.qualifications = state.qualifications.filter(x => x !== q);
+  if (state.formatting?.qualificationColors) delete state.formatting.qualificationColors[q];
+  state.people.forEach(p => p.qualifications = (p.qualifications || []).filter(x => x !== q));
+  state.requirements.forEach(r => {
+    (r.billets || []).forEach(b => b.eligibleQuals = (b.eligibleQuals || []).filter(x => x !== q));
+    delete (r.qualificationMinimums || {})[q]; delete (r.operationalMinimums || {})[q];
+    r.doubleFillRules = (r.doubleFillRules || []).filter(x => x.anchorQualification !== q);
+  });
+  clearGeneratedMonth();
+}
+
+function renderSettings(main) {
+  const qualRows = state.qualifications.map(q => `<tr><td><input data-qual-rename="${esc(q)}" value="${esc(q)}"></td><td>${qualificationUsage(q)}</td><td><button class="small danger" data-remove-qual="${esc(q)}">Remove</button></td></tr>`).join("");
+  const absRows = state.absenceTypes.map(t => `<tr>
+    <td><input data-atype-id="${t.id}" data-atype-field="name" value="${esc(t.name)}"></td>
+    <td><input data-atype-id="${t.id}" data-atype-field="code" value="${esc(t.code)}" maxlength="5"></td>
+    <td><input type="color" data-atype-id="${t.id}" data-atype-field="color" value="${esc(t.color || "#e5e7eb")}"></td>
+    <td style="text-align:center"><input type="checkbox" data-atype-id="${t.id}" data-atype-field="blocksDuty" ${t.blocksDuty ? "checked" : ""}></td>
+    <td><button class="small danger" data-remove-atype="${t.id}">Remove</button></td>
+  </tr>`).join("");
+  const scheduleRows = state.scheduleLabels.map((s,i) => `<tr><td><input data-schedule-index="${i}" value="${esc(s)}"></td><td><button class="small danger" data-remove-schedule="${i}">Remove</button></td></tr>`).join("");
+  const sectionRows = state.dutySections.map((s,i) => `<tr><td><input data-section-index="${i}" value="${esc(s)}"></td><td><button class="small danger" data-remove-section="${i}">Remove</button></td></tr>`).join("");
+
+  main.innerHTML = pageHeading("Settings & Data", "Edit qualification names, absence reasons, schedule labels, duty sections, scheduling preferences, and backups.") + `
+    <div class="grid-2">
+      <div class="panel"><div class="panel-header">Qualification catalog</div><div class="panel-body">
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>References</th><th></th></tr></thead><tbody>${qualRows}</tbody></table></div>
+        <div class="inline-field" style="margin-top:10px"><input id="newQual" placeholder="New qualification"><button id="addQual">Add</button></div>
+      </div></div>
+      <div class="panel"><div class="panel-header">Scheduling behavior</div><div class="panel-body form-grid">
+        <label class="field">Minimum rest days<input id="minRestDays" type="number" min="0" max="15" value="${Number(state.schedulerSettings.minRestDays) || 0}"></label>
+        <label class="field">Weekend balance weight<input id="weekendWeight" type="number" min="0" max="500" value="${Number(state.schedulerSettings.weekendWeight) || 0}"></label>
+        <label class="field">Holiday balance weight<input id="holidayWeight" type="number" min="0" max="500" value="${Number(state.schedulerSettings.holidayWeight) || 0}"></label>
+        <label class="field">Spread divisions on each duty day<select id="spreadDivisions"><option value="1" ${state.schedulerSettings.spreadDivisions !== false ? "selected" : ""}>Yes</option><option value="0" ${state.schedulerSettings.spreadDivisions === false ? "selected" : ""}>No</option></select></label>
+        <label class="field">Same-division spacing weight<input id="divisionSpreadWeight" type="number" min="0" max="5000" value="${Math.max(0, Number(state.schedulerSettings.divisionSpreadWeight ?? 650))}"></label>
+        <label class="field">Carry fairness from prior months<select id="carryFairness"><option value="1" ${state.schedulerSettings.carryFairness !== false ? "selected" : ""}>Yes</option><option value="0" ${state.schedulerSettings.carryFairness === false ? "selected" : ""}>No</option></select></label>
+        <label class="field">Fairness history months<input id="historyMonths" type="number" min="1" max="120" value="${Math.max(1, Number(state.schedulerSettings.historyMonths) || 12)}"></label>
+        <label class="field">Enforce assigned duty sections<select id="enforceSections"><option value="0" ${!state.schedulerSettings.enforceDutySections ? "selected" : ""}>No</option><option value="1" ${state.schedulerSettings.enforceDutySections ? "selected" : ""}>Yes</option></select></label>
+        <label class="field">Prefer even distribution<select id="preferEven"><option value="1" ${state.schedulerSettings.preferEvenDistribution ? "selected" : ""}>Yes</option><option value="0" ${!state.schedulerSettings.preferEvenDistribution ? "selected" : ""}>No</option></select></label>
+        <div class="small-note" style="grid-column:1/-1">Division spacing is a preference, not a hard cap: higher weights more strongly avoid stacking the same division on one duty day, but qualifications and manual locks can override it. If rest rules make a day impossible, the generator automatically retries that day with the rest rule relaxed and records a warning.</div>
+      </div></div>
+    </div>
+    <div class="panel"><div class="panel-header">Absence / unavailability types</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Print code</th><th>Color</th><th>Blocks duty</th><th></th></tr></thead><tbody>${absRows}</tbody></table></div><div class="panel-body"><button id="addAtype" class="small">Add absence type</button></div></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-header">Schedule labels</div><div class="table-wrap"><table class="data-table"><tbody>${scheduleRows}</tbody></table></div><div class="panel-body"><button id="addSchedule" class="small">Add schedule label</button></div></div>
+      <div class="panel"><div class="panel-header">Duty sections</div><div class="table-wrap"><table class="data-table"><tbody>${sectionRows}</tbody></table></div><div class="panel-body"><button id="addSection" class="small">Add duty section</button></div></div>
+    </div>
+    <div class="panel"><div class="panel-header">Backup / restore</div><div class="panel-body toolbar">
+      <button id="exportData">Export JSON backup</button><button id="importData">Import JSON backup</button><button id="resetData" class="danger">Reset to workbook defaults</button>
+      <span class="small-note">Data is stored in this browser. Export a backup before moving to another computer/browser.</span>
+    </div></div>`;
+
+  main.querySelectorAll("[data-qual-rename]").forEach(el => el.addEventListener("change", () => { if (renameQualification(el.dataset.qualRename, el.value)) { saveState(); render(); } else render(); }));
+  main.querySelectorAll("[data-remove-qual]").forEach(b => b.addEventListener("click", () => { removeQualification(b.dataset.removeQual); saveState(); render(); }));
+  document.getElementById("addQual")?.addEventListener("click", () => {
+    const q = normalizeQual(document.getElementById("newQual").value); if (!q) return;
+    if (state.qualifications.includes(q)) return alert(`${q} already exists.`);
+    state.qualifications.push(q); state.formatting ||= {}; state.formatting.qualificationColors ||= {}; state.formatting.qualificationColors[q] = "#eef4f8"; saveState(); render();
+  });
+
+  main.querySelectorAll("[data-atype-id][data-atype-field]").forEach(el => el.addEventListener("change", () => {
+    const t = getAbsenceType(el.dataset.atypeId); if (!t) return;
+    t[el.dataset.atypeField] = el.type === "checkbox" ? el.checked : el.value;
+    clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-remove-atype]").forEach(b => b.addEventListener("click", () => {
+    if (state.absences.some(a => a.typeId === b.dataset.removeAtype) && !confirm("This type is used by existing absences. Delete the type and those absence entries?")) return;
+    state.absences = state.absences.filter(a => a.typeId !== b.dataset.removeAtype);
+    state.absenceTypes = state.absenceTypes.filter(t => t.id !== b.dataset.removeAtype); clearGeneratedMonth(); saveState(); render();
+  }));
+  document.getElementById("addAtype")?.addEventListener("click", () => { state.absenceTypes.push({ id: uid("atype"), name: "New Reason", code: "N", color: "#e5e7eb", blocksDuty: true }); saveState(); render(); });
+
+  main.querySelectorAll("[data-schedule-index]").forEach(el => el.addEventListener("change", () => {
+    const i = Number(el.dataset.scheduleIndex), old = state.scheduleLabels[i], val = el.value.trim(); if (!val) return render();
+    state.scheduleLabels[i] = val; Object.values(state.dayConfigs).forEach(c => { if (c.scheduleLabel === old) c.scheduleLabel = val; }); state.formatting ||= {}; state.formatting.scheduleColors ||= {}; if (state.formatting.scheduleColors[old]) { state.formatting.scheduleColors[val]=state.formatting.scheduleColors[old]; delete state.formatting.scheduleColors[old]; } saveState(); render();
+  }));
+  main.querySelectorAll("[data-remove-schedule]").forEach(b => b.addEventListener("click", () => { const i=Number(b.dataset.removeSchedule), old=state.scheduleLabels[i]; state.scheduleLabels.splice(i,1); Object.values(state.dayConfigs).forEach(c => { if(c.scheduleLabel===old) c.scheduleLabel=state.scheduleLabels[0]||""; }); if(state.formatting?.scheduleColors) delete state.formatting.scheduleColors[old]; saveState(); render(); }));
+  document.getElementById("addSchedule")?.addEventListener("click", () => { const label=`Schedule ${state.scheduleLabels.length+1}`; state.scheduleLabels.push(label); state.formatting ||= {}; state.formatting.scheduleColors ||= {}; state.formatting.scheduleColors[label]="#ffffff"; saveState(); render(); });
+
+  main.querySelectorAll("[data-section-index]").forEach(el => el.addEventListener("change", () => {
+    const i=Number(el.dataset.sectionIndex), old=state.dutySections[i], val=el.value.trim(); if(!val) return render();
+    state.dutySections[i]=val; state.people.forEach(p=>{if(p.dutySection===old)p.dutySection=val}); Object.values(state.dayConfigs).forEach(c=>{if(c.dutySection===old)c.dutySection=val}); clearGeneratedMonth(); saveState(); render();
+  }));
+  main.querySelectorAll("[data-remove-section]").forEach(b => b.addEventListener("click", () => { const i=Number(b.dataset.removeSection), old=state.dutySections[i]; state.dutySections.splice(i,1); state.people.forEach(p=>{if(p.dutySection===old)p.dutySection=""}); Object.values(state.dayConfigs).forEach(c=>{if(c.dutySection===old)c.dutySection=""}); clearGeneratedMonth(); saveState(); render(); }));
+  document.getElementById("addSection")?.addEventListener("click", () => { state.dutySections.push(String(state.dutySections.length+1)); saveState(); render(); });
+
+  const setting = (id, prop, fn=v=>v) => document.getElementById(id)?.addEventListener("change", e => { state.schedulerSettings[prop]=fn(e.target.value); clearGeneratedMonth(); saveState(); render(); });
+  setting("minRestDays","minRestDays",v=>Math.max(0,Number(v)||0)); setting("weekendWeight","weekendWeight",v=>Math.max(0,Number(v)||0)); setting("holidayWeight","holidayWeight",v=>Math.max(0,Number(v)||0)); setting("spreadDivisions","spreadDivisions",v=>v==="1"); setting("divisionSpreadWeight","divisionSpreadWeight",v=>Math.max(0,Number(v)||0)); setting("carryFairness","carryFairness",v=>v==="1"); setting("historyMonths","historyMonths",v=>Math.max(1,Number(v)||12)); setting("enforceSections","enforceDutySections",v=>v==="1"); setting("preferEven","preferEvenDistribution",v=>v==="1");
+
+  document.getElementById("exportData")?.addEventListener("click", exportData);
+  document.getElementById("importData")?.addEventListener("click", () => document.getElementById("importInput").click());
+  document.getElementById("resetData")?.addEventListener("click", () => { if (!confirm("Reset all website data back to the workbook-derived defaults?")) return; state=makeDefaultState(); ui.selectedRequirementId=state.requirements[0]?.id||null; ui.editPersonId=state.people[0]?.id||null; saveState(); render(); });
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob); const a = document.createElement("a");
+  a.href = url; a.download = `watchbill-backup-${monthKey(state.viewYear,state.viewMonth)}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+
+function clearGeneratedMonth() {
+  // Preserve completed prior months as fairness history, but invalidate this month and later months because later fairness depends on earlier assignments.
+  const first = currentMonthKeys()[0];
+  Object.keys(state.generated || {}).forEach(k => { if (k >= first) delete state.generated[k]; });
+}
+
+
+/**
+ * 12-scheduler.js
+ * Fairness scoring, billet solving, validation, and month generation.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function dateOrdinal(key) {
+  const [y,m,d] = String(key).split("-").map(Number);
+  return Math.floor(Date.UTC(y, (m || 1) - 1, d || 1) / 86400000);
+}
+function historyStartKey(currentKey) {
+  const months = Math.max(1, Number(state.schedulerSettings.historyMonths) || 12);
+  const [y,m] = currentKey.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 - months, 1));
+  return dateKey(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1);
+}
+function buildCarryStats(currentStartKey) {
+  const stats = {};
+  state.people.forEach(p => stats[p.id] = { duties: 0, weekend: 0, holiday: 0, lastOrdinal: null });
+  if (state.schedulerSettings.carryFairness === false) return stats;
+  const cutoff = historyStartKey(currentStartKey);
+  Object.entries(state.generated || {}).forEach(([k, result]) => {
+    if (k >= currentStartKey || k < cutoff || !result?.selected) return;
+    const [y,m,d] = k.split("-").map(Number);
+    const cfg = state.dayConfigs[k] || {};
+    const wknd = isWeekend(y,m,d), hol = !!cfg.holiday;
+    const ord = dateOrdinal(k);
+    result.selected.forEach(id => {
+      if (!stats[id]) stats[id] = { duties:0, weekend:0, holiday:0, lastOrdinal:null };
+      stats[id].duties++;
+      if (wknd) stats[id].weekend++;
+      if (hol) stats[id].holiday++;
+      stats[id].lastOrdinal = Math.max(stats[id].lastOrdinal ?? -Infinity, ord);
+    });
+  });
+  return stats;
+}
+function candidateScore(person, stats, dayOrdinal, isWknd, isHol) {
+  const s = stats[person.id] || { duties: 0, weekend: 0, holiday: 0, lastOrdinal: null };
+  const even = state.schedulerSettings.preferEvenDistribution !== false;
+  let score = even ? s.duties * 1000 : 0;
+  if (isWknd) score += s.weekend * (Number(state.schedulerSettings.weekendWeight) || 0);
+  if (isHol) score += s.holiday * (Number(state.schedulerSettings.holidayWeight) || 0);
+  if (s.lastOrdinal != null) {
+    const gap = dayOrdinal - s.lastOrdinal;
+    score += Math.max(0, 5 - gap) * 8;
+  }
+  score += Math.max(0, state.people.indexOf(person)) / 1000;
+  return score;
+}
+
+function divisionSpreadPenalty(person, selectedIds) {
+  if (state.schedulerSettings.spreadDivisions === false) return 0;
+  const weight = Math.max(0, Number(state.schedulerSettings.divisionSpreadWeight) || 0);
+  if (!weight) return 0;
+  const div = person.division || "UNASSIGNED";
+  let sameDivision = 0;
+  for (const id of selectedIds || []) {
+    if (id === person.id) continue;
+    const other = getPerson(id);
+    if (other && (other.division || "UNASSIGNED") === div) sameDivision++;
+  }
+  return sameDivision * weight;
+}
+
+function availableCandidates(k, dayOrdinal, stats, ignoreRest, forcedOn, forcedOff) {
+  const cfg = state.dayConfigs[k] || {};
+  const minRest = Math.max(0, Number(state.schedulerSettings.minRestDays) || 0);
+  return state.people.filter(p => {
+    if (p.active === false || forcedOff.has(p.id) || blocksDuty(p.id, k)) return false;
+    if (state.schedulerSettings.enforceDutySections && cfg.dutySection && p.dutySection !== cfg.dutySection && !forcedOn.has(p.id)) return false;
+    if (!ignoreRest && !forcedOn.has(p.id) && minRest > 0) {
+      const last = stats[p.id]?.lastOrdinal;
+      if (last != null && dayOrdinal - last <= minRest) return false;
+    }
+    return true;
+  });
+}
+
+function personMatchesSlot(person, slot) {
+  const qs = person.qualifications || [];
+  return (slot.eligibleQuals || []).some(q => qs.includes(q));
+}
+
+function canTakeAnotherPrimary(person, existingSlots, newSlot, req) {
+  if (!existingSlots.length) return true;
+  const combined = [...existingSlots, newSlot];
+  let maxSlots = 1;
+  for (const rule of (req.doubleFillRules || [])) {
+    const anchor = rule.anchorQualification;
+    if (!anchor || !(person.qualifications || []).includes(anchor)) continue;
+    const anchorIsActuallyFilled = combined.some(s => (s.eligibleQuals || []).includes(anchor));
+    if (anchorIsActuallyFilled) maxSlots = Math.max(maxSlots, 1 + Math.max(1, Number(rule.maxAdditionalBillets) || 1));
+  }
+  return existingSlots.length < maxSlots;
+}
+
+function makeSlots(req) {
+  const slots = [];
+  (req.billets || []).forEach(b => {
+    const count = Math.max(0, Number(b.count) || 0);
+    for (let i = 0; i < count; i++) slots.push({ id: `${b.id || b.name}_${i}`, name: b.name || "Billet", eligibleQuals: unique((b.eligibleQuals || []).map(normalizeQual).filter(Boolean)) });
+  });
+  return slots;
+}
+
+function canMeetCoverageWithinLimit(selectedIds, candidates, req, limit) {
+  if (!limit) return true;
+  const selected = new Set(selectedIds);
+  if (selected.size > limit) return false;
+  const mins = combinedMinimums(req);
+  const minPeople = Math.max(0, Number(req.minPersonnel) || 0);
+  const enoughNow = () => {
+    if (selected.size < minPeople) return false;
+    for (const [q, minRaw] of Object.entries(mins)) {
+      const min = Math.max(0, Number(minRaw) || 0);
+      let have = 0;
+      selected.forEach(id => { if ((getPerson(id)?.qualifications || []).includes(q)) have++; });
+      if (have < min) return false;
+    }
+    return true;
+  };
+  if (enoughNow()) return true;
+  const remaining = candidates.filter(p => !selected.has(p.id));
+  const maxAdds = Math.max(0, limit - selected.size);
+  let nodes = 0;
+  const dfs = (idx, addsLeft) => {
+    if (enoughNow()) return true;
+    if (addsLeft <= 0 || idx >= remaining.length || ++nodes > 20000) return false;
+    // Try high-coverage candidates first.
+    const p = remaining[idx];
+    selected.add(p.id);
+    if (dfs(idx + 1, addsLeft - 1)) return true;
+    selected.delete(p.id);
+    return dfs(idx + 1, addsLeft);
+  };
+  return dfs(0, maxAdds);
+}
+
+function assignPrimaryBillets(req, candidates, stats, dayOrdinal, wknd, hol, forcedOn = new Set()) {
+  let slots = makeSlots(req);
+  const baseScore = p => candidateScore(p, stats, dayOrdinal, wknd, hol) + (forcedOn.has(p.id) ? -250000 : 0);
+  const rawScoredFor = slot => candidates.filter(p => personMatchesSlot(p, slot)).sort((a,b) => baseScore(a) - baseScore(b));
+  slots = slots.sort((a,b) => rawScoredFor(a).length - rawScoredFor(b).length);
+  const preferred = Math.max(0, Number(req.preferredPersonnel) || 0);
+  const minPeople = Math.max(0, Number(req.minPersonnel) || 0);
+  const limit = preferred ? Math.max(preferred, minPeople) : 0;
+
+  const search = enforceLimit => {
+    const assignments = {};
+    let nodes = 0;
+    const maxNodes = 240000;
+    const recurse = idx => {
+      if (idx >= slots.length) {
+        const ids = Object.keys(assignments);
+        if (enforceLimit && limit && !canMeetCoverageWithinLimit(ids, candidates, req, limit)) return false;
+        return true;
+      }
+      if (++nodes > maxNodes) return false;
+      const slot = slots[idx];
+      const list = rawScoredFor(slot).slice().sort((a,b) => {
+        const aReuse = (assignments[a.id] || []).length ? -1 : 0;
+        const bReuse = (assignments[b.id] || []).length ? -1 : 0;
+        // Valid double-fills are preferred so a >24 Hr set can reach a six-person solution when possible.
+        if (aReuse !== bReuse) return aReuse - bReuse;
+        const alreadySelected = unique([...Object.keys(assignments), ...forcedOn]);
+        const aSpread = divisionSpreadPenalty(a, alreadySelected);
+        const bSpread = divisionSpreadPenalty(b, alreadySelected);
+        return (baseScore(a) + aSpread) - (baseScore(b) + bSpread);
+      });
+      for (const p of list) {
+        const existing = assignments[p.id] || [];
+        if (!canTakeAnotherPrimary(p, existing, slot, req)) continue;
+        const isNew = existing.length === 0;
+        if (enforceLimit && limit && isNew && Object.keys(assignments).length >= limit) continue;
+        (assignments[p.id] ||= []).push(slot);
+
+        let forwardOk = true;
+        for (let j = idx + 1; j < slots.length && forwardOk; j++) {
+          const future = slots[j];
+          forwardOk = candidates.some(c => {
+            const existingFuture = assignments[c.id] || [];
+            if (enforceLimit && limit && !existingFuture.length && Object.keys(assignments).length >= limit) return false;
+            return personMatchesSlot(c, future) && canTakeAnotherPrimary(c, existingFuture, future, req);
+          });
+        }
+        if (forwardOk && recurse(idx + 1)) return true;
+        assignments[p.id].pop();
+        if (!assignments[p.id].length) delete assignments[p.id];
+      }
+      return false;
+    };
+    const complete = recurse(0);
+    return { complete, assignments };
+  };
+
+  let solved = search(!!limit);
+  let preferredTargetMissed = false;
+  if (!solved.complete && limit) {
+    preferredTargetMissed = true;
+    solved = search(false);
+  }
+  if (solved.complete) return { assignments: solved.assignments, missingSlots: [], preferredTargetMissed };
+
+  // Fall back to a best-effort partial schedule so shortages remain visible.
+  const greedy = {};
+  const missing = [];
+  for (const slot of slots) {
+    const list = rawScoredFor(slot).slice().sort((a,b) => {
+      const ar = (greedy[a.id] || []).length ? -1 : 0;
+      const br = (greedy[b.id] || []).length ? -1 : 0;
+      if (ar !== br) return ar - br;
+      const alreadySelected = unique([...Object.keys(greedy), ...forcedOn]);
+      return (baseScore(a) + divisionSpreadPenalty(a, alreadySelected)) - (baseScore(b) + divisionSpreadPenalty(b, alreadySelected));
+    });
+    const p = list.find(x => canTakeAnotherPrimary(x, greedy[x.id] || [], slot, req));
+    if (!p) missing.push(slot.name);
+    else (greedy[p.id] ||= []).push(slot);
+  }
+  return { assignments: greedy, missingSlots: missing, preferredTargetMissed: true };
+}
+
+function combinedMinimums(req) {
+  const out = {};
+  for (const [q,n] of Object.entries(req.qualificationMinimums || {})) out[q] = Math.max(out[q] || 0, Number(n) || 0);
+  for (const [q,n] of Object.entries(req.operationalMinimums || {})) out[q] = Math.max(out[q] || 0, Number(n) || 0);
+  return out;
+}
+
+function addCoveragePeople(selected, candidates, req, stats, dayOrdinal, wknd, hol) {
+  const mins = combinedMinimums(req);
+  const selectedSet = new Set(selected);
+  while (true) {
+    const deficits = {};
+    for (const [q, min] of Object.entries(mins)) {
+      const have = [...selectedSet].reduce((n,id) => n + ((getPerson(id)?.qualifications || []).includes(q) ? 1 : 0), 0);
+      if (have < min) deficits[q] = min - have;
+    }
+    if (!Object.keys(deficits).length) break;
+    const choices = candidates.filter(p => !selectedSet.has(p.id)).map(p => {
+      const benefit = Object.entries(deficits).reduce((n,[q,need]) => n + ((p.qualifications || []).includes(q) ? Math.min(1, need) : 0), 0);
+      return { p, benefit, score: candidateScore(p, stats, dayOrdinal, wknd, hol) + divisionSpreadPenalty(p, selectedSet) };
+    }).filter(x => x.benefit > 0).sort((a,b) => b.benefit - a.benefit || a.score - b.score);
+    if (!choices.length) break;
+    selectedSet.add(choices[0].p.id);
+  }
+  return [...selectedSet];
+}
+
+function addMinimumHeadcount(selected, candidates, req, stats, dayOrdinal, wknd, hol) {
+  const need = Math.max(0, Number(req.minPersonnel) || 0);
+  const set = new Set(selected);
+  if (set.size >= need) return [...set];
+  const choices = candidates.filter(p => !set.has(p.id)).sort((a,b) =>
+    (candidateScore(a,stats,dayOrdinal,wknd,hol) + divisionSpreadPenalty(a,set)) -
+    (candidateScore(b,stats,dayOrdinal,wknd,hol) + divisionSpreadPenalty(b,set))
+  );
+  for (const p of choices) { if (set.size >= need) break; set.add(p.id); }
+  return [...set];
+}
+
+function validateDay(req, selected, missingSlots) {
+  const warnings = [];
+  if (missingSlots.length) warnings.push(`Unfilled billets: ${missingSlots.join(", ")}`);
+  const checks = [
+    ["Section", req.qualificationMinimums || {}],
+    ["Operational", req.operationalMinimums || {}],
+  ];
+  for (const [label, mins] of checks) {
+    for (const [q, minRaw] of Object.entries(mins)) {
+      const min = Math.max(0, Number(minRaw) || 0);
+      const have = coverageCount(selected, q);
+      if (have < min) warnings.push(`${label} ${q}: ${have}/${min}`);
+    }
+  }
+  const minPersonnel = Math.max(0, Number(req.minPersonnel) || 0);
+  if (selected.length < minPersonnel) warnings.push(`Minimum people: ${selected.length}/${minPersonnel}`);
+  return warnings;
+}
+
+function attemptDay(k, dayNum, stats, ignoreRest) {
+  const cfg = state.dayConfigs[k] || {};
+  const req = effectiveRequirementForConfig(cfg);
+  if (!req) return { selected: [], billets: {}, billetQualifications: {}, warnings: ["No valid requirement set selected"], feasible: false };
+  const overrideObj = state.manualOverrides[k] || {};
+  const forcedOn = new Set(Object.entries(overrideObj).filter(([,v]) => v === "on").map(([id]) => id));
+  const forcedOff = new Set(Object.entries(overrideObj).filter(([,v]) => v === "off").map(([id]) => id));
+  const wknd = isWeekend(state.viewYear, state.viewMonth, dayNum), hol = !!cfg.holiday;
+  const ord = dateOrdinal(k);
+  const candidates = availableCandidates(k, ord, stats, ignoreRest, forcedOn, forcedOff);
+  const forcedUnavailable = [...forcedOn].filter(id => !candidates.some(p => p.id === id));
+
+  const primary = assignPrimaryBillets(req, candidates, stats, ord, wknd, hol, forcedOn);
+  let selected = unique([...Object.keys(primary.assignments), ...[...forcedOn].filter(id => candidates.some(p => p.id === id))]);
+  selected = addCoveragePeople(selected, candidates, req, stats, ord, wknd, hol);
+  selected = addMinimumHeadcount(selected, candidates, req, stats, ord, wknd, hol);
+
+  const billets = {};
+  const billetQualifications = {};
+  for (const [personId, slots] of Object.entries(primary.assignments)) {
+    billets[personId] = slots.map(s => s.name);
+    const person = getPerson(personId);
+    billetQualifications[personId] = slots.map(s => (s.eligibleQuals || []).find(q => (person?.qualifications || []).includes(q)) || "");
+  }
+  const warnings = validateDay(req, selected, primary.missingSlots);
+  const preferred = Math.max(0, Number(req.preferredPersonnel) || 0);
+  if (preferred && selected.length > preferred) warnings.push(`Preferred staffing count exceeded: ${selected.length}/${preferred}`);
+  if (forcedUnavailable.length) warnings.push(`Forced-on unavailable: ${forcedUnavailable.map(id => getPerson(id)?.name || id).join(", ")}`);
+  const hardWarnings = warnings.filter(w => !w.startsWith("Forced-on unavailable") && !w.startsWith("Preferred staffing count exceeded"));
+  return { selected, billets, billetQualifications, warnings, feasible: hardWarnings.length === 0 };
+}
+
+function generateMonth() {
+  ensureMonthConfigs();
+  const keys = currentMonthKeys();
+  // Older months remain as fairness history. Current and later generated months are rebuilt in sequence so carry-over stays consistent.
+  const first = keys[0], last = keys[keys.length - 1];
+  Object.keys(state.generated || {}).forEach(k => { if (k >= first) delete state.generated[k]; });
+  const stats = buildCarryStats(first);
+
+  keys.forEach((k, i) => {
+    const dayNum = i + 1;
+    let result = attemptDay(k, dayNum, stats, false);
+    if (!result.feasible && Number(state.schedulerSettings.minRestDays) > 0) {
+      const relaxed = attemptDay(k, dayNum, stats, true);
+      if (relaxed.feasible || relaxed.warnings.length <= result.warnings.length) {
+        result = relaxed;
+        result.warnings = [`Rest rule relaxed for this day`, ...result.warnings];
+      }
+    }
+    state.generated[k] = { selected: unique(result.selected), billets: result.billets, billetQualifications: result.billetQualifications, warnings: result.warnings };
+    const cfg = state.dayConfigs[k];
+    const wknd = isWeekend(state.viewYear, state.viewMonth, dayNum), hol = !!cfg.holiday;
+    const ord = dateOrdinal(k);
+    result.selected.forEach(id => {
+      if (!stats[id]) stats[id] = { duties:0, weekend:0, holiday:0, lastOrdinal:null };
+      stats[id].duties++;
+      if (wknd) stats[id].weekend++;
+      if (hol) stats[id].holiday++;
+      stats[id].lastOrdinal = ord;
+    });
+  });
+  ensureDailyWatchbills(keys, false);
+}
+
+
+/**
+ * 13-import-print-and-startup.js
+ * Backup import, print actions, event wiring, and startup.
+ * Loaded as a classic browser script so later modules can use these shared declarations.
+ */
+
+function importDataFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ""));
+      state = migrateState(parsed); ensureMonthConfigs();
+      ui.selectedRequirementId = state.requirements[0]?.id || null;
+      ui.editPersonId = state.people[0]?.id || null;
+      saveState(); render();
+    } catch (e) { alert("That file is not a valid Watchbill Builder JSON backup."); }
+  };
+  reader.readAsText(file);
+}
+
+function printWatchbillPdf() {
+  if (!currentMonthKeys().every(k => state.generated[k])) generateMonth();
+  saveState();
+  document.body.classList.remove("print-daily");
+  document.body.classList.add("print-monthly");
+  ui.view = "watchbill";
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "watchbill"));
+  render();
+  const oldTitle = document.title;
+  const pdfTitle = `${monthLabel(state.viewYear, state.viewMonth)} Watchbill`;
+  document.title = pdfTitle;
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.title = oldTitle; document.body.classList.remove("print-monthly"); }, 250);
+  }, 40);
+}
+
+function printDailyWatchbillPdf(k) {
+  if (!state.generated[k]) generateMonth();
+  buildDailyWatchbill(k, false, {});
+  ui.dailyDateKey = k;
+  ui.view = "daily";
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === "daily"));
+  document.body.classList.remove("print-monthly");
+  document.body.classList.add("print-daily");
+  saveState(); render();
+  const oldTitle = document.title;
+  document.title = `${dailyDateLabel(k)} Daily Watchbill`;
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.title = oldTitle; document.body.classList.remove("print-daily"); }, 250);
+  }, 40);
+}
+
+// Global controls
+if (typeof document !== "undefined") {
+  for (const b of document.querySelectorAll(".nav-btn")) b.addEventListener("click", () => setView(b.dataset.view));
+  document.getElementById("monthPicker").addEventListener("change", e => {
+    const [y,m] = e.target.value.split("-").map(Number); if (!y || !m) return;
+    state.viewYear = y; state.viewMonth = m; ensureMonthConfigs(); saveState(); render();
+  });
+  document.getElementById("generateBtn").addEventListener("click", () => { generateMonth(); saveState(); ui.view="watchbill"; document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.view==="watchbill")); render(); });
+  document.getElementById("printBtn").addEventListener("click", () => printWatchbillPdf());
+  document.getElementById("saveBtn").addEventListener("click", () => saveState(true));
+  document.getElementById("importInput").addEventListener("change", e => { const f=e.target.files?.[0]; if(f) importDataFile(f); e.target.value=""; });
+  render();
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { generateMonth, getState: () => state, makeDefaultState, attemptDay, assignPrimaryBillets, buildCarryStats, dateOrdinal, setView, renderSpecialDays, renderApprovals, mergeRequirementSets, applyTransitionPlan, buildDailyWatchbill, autoAssignDailyLeaders };
+}
+
+  </script>
+</body>
+</html>
